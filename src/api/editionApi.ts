@@ -7,7 +7,7 @@ export class EditionsService {
 
     async getEditions(): Promise<Edition[]> {
         const resource = await getHal('/editions', this.authStrategy);
-        const embedded = resource.embeddedArray("editions") || [];
+        const embedded = resource.embeddedArray('editions') || [];
         return mergeHalArray<Edition>(embedded);
     }
 }
