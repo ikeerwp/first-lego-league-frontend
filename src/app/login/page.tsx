@@ -93,7 +93,8 @@ export default function LoginPage() {
                         id="password"
                         type="password"
                         {...register("password", {
-                            required: "Password is required"
+                            required: "Password is required",
+                            minLength: { value: 8, message: "Minimum 8 characters" },
                         })}
                     />
                     {errors.password && (
