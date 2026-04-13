@@ -1,15 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { loginViaUi, registerUserViaUi } from "./utils/auth";
-import { createTestUser } from "./utils/test-data";
 
-test("registration and login work for a new user", async ({ page }) => {
-    const user = createTestUser("register");
+test("public registration is blocked", async ({ page }) => {
+    await page.goto("/users/register");
 
-    await registerUserViaUi(page, user);
-    await loginViaUi(page, user);
-
-    await expect(page.getByRole("heading", { name: user.username, level: 1 })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Logout" })).toBeVisible();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("link", { name: "Login" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Register" })).toHaveCount(0);
 });
 
 test("invalid credentials show the current authentication error", async ({ page }) => {
