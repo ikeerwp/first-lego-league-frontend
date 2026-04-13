@@ -82,12 +82,14 @@ export default function Loginbar() {
             >
                 Login
             </Link>
+            { /* Registration is disabled because we currently do not allow external user registration.
             <Link
                 href="/users/register"
                 className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
             >
                 Register
             </Link>
+*/}
         </div>
     );
 }

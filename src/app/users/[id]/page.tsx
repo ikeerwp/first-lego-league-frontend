@@ -10,6 +10,7 @@ import { Record } from "@/types/record";
 import { parseErrorMessage, NotFoundError } from "@/types/errors";
 import Link from "next/link";
 import { User } from "@/types/user";
+import { buttonVariants } from "@/app/components/button";
 
 interface UsersPageProps {
     readonly params: Promise<{ id: string }>;
@@ -26,19 +27,19 @@ function getRecordHref(recordUri: string) {
 export default async function UsersPage(props: Readonly<UsersPageProps>) {
     const userService = new UsersService(serverAuthProvider);
     const recordService = new RecordService(serverAuthProvider);
-    
+
     let user: User | null = null;
     let currentUser: User | null = null;
     let records: Record[] = [];
     let error: string | null = null;
     let recordsError: string | null = null;
-    
+
     try {
         user = await userService.getUserById((await props.params).id);
     } catch (e) {
         console.error("Failed to fetch user:", e);
-        error = e instanceof NotFoundError 
-            ? "This user does not exist." 
+        error = e instanceof NotFoundError
+            ? "This user does not exist."
             : parseErrorMessage(e);
     }
 
@@ -49,6 +50,10 @@ export default async function UsersPage(props: Readonly<UsersPageProps>) {
     }
 
     const isOwner = !!(currentUser && user && currentUser.username === user.username);
+
+    const isCurrentUserAdmin = !!currentUser?.authorities?.some(
+    (authority) => authority.authority === "ROLE_ADMIN"
+);
 
     if (user && !error) {
         try {
@@ -96,6 +101,18 @@ export default async function UsersPage(props: Readonly<UsersPageProps>) {
                             userId={(await props.params).id}
                             currentEmail={user.email}
                         />
+
+                        { isCurrentUserAdmin && (
+                            <div className="mt-4">
+                                <Link
+                                    href="/administrators"
+                                    className={buttonVariants({ variant: "secondary" })}
+
+                                    >
+                                    view and create other administrators
+                                    </Link>
+                            </div>
+                        )}
                         <div className="editorial-divider" />
                     </>
                 )}
