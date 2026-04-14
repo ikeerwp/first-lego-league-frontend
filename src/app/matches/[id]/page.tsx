@@ -3,6 +3,7 @@ import ErrorAlert from "@/app/components/error-alert";
 import PageShell from "@/app/components/page-shell";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { getEncodedResourceId } from "@/lib/halRoute";
+import { formatMatchTime } from "@/lib/matchUtils";
 import { NotFoundError, parseErrorMessage } from "@/types/errors";
 import { Match } from "@/types/match";
 import { Team } from "@/types/team";
@@ -12,27 +13,6 @@ export const dynamic = "force-dynamic";
 
 interface MatchDetailPageProps {
     readonly params: Promise<{ id: string }>;
-}
-
-function formatMatchTime(value?: string | null) {
-    if (!value) {
-        return "Not available";
-    }
-
-    const timeMatch = new RegExp(/^(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/).exec(value);
-    if (timeMatch) {
-        return `${timeMatch[1]}:${timeMatch[2]}`;
-    }
-
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-        return value;
-    }
-
-    return new Intl.DateTimeFormat("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-    }).format(date);
 }
 
 function getMatchTitle(match: Match | null, id: string) {
@@ -64,8 +44,10 @@ function InfoRow({ label, value }: Readonly<{ label: string; value: string }>) {
 function TeamCard({ team, label }: Readonly<{ team: Team; label: string }>) {
     const teamId = getEncodedResourceId(team.link("self")?.href ?? team.uri);
 
-    const card = (
-        <div className="module-card flex flex-col gap-2 rounded-lg border border-border bg-card p-5 transition-colors hover:bg-secondary/30">
+    const cardContent = (
+        <div
+            className={`module-card flex flex-col gap-2 rounded-lg border border-border bg-card p-5 transition-colors${teamId ? " hover:bg-secondary/30" : ""}`}
+        >
             <div className="page-eyebrow">{label}</div>
             <p className="list-title">{team.name ?? "Unnamed team"}</p>
             <div className="space-y-1">
@@ -83,10 +65,10 @@ function TeamCard({ team, label }: Readonly<{ team: Team; label: string }>) {
     );
 
     if (teamId) {
-        return <Link href={`/teams/${teamId}`}>{card}</Link>;
+        return <Link href={`/teams/${teamId}`}>{cardContent}</Link>;
     }
 
-    return card;
+    return cardContent;
 }
 
 function UnknownTeamCard({ label, name }: Readonly<{ label: string; name?: string }>) {
@@ -172,20 +154,18 @@ export default async function MatchDetailPage(props: Readonly<MatchDetailPagePro
 
                         {teamsError && <ErrorAlert message={teamsError} />}
 
-                        {!teamsError && (
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                {teamA ? (
-                                    <TeamCard team={teamA} label="Team A" />
-                                ) : (
-                                    <UnknownTeamCard label="Team A" name={match.teamA} />
-                                )}
-                                {teamB ? (
-                                    <TeamCard team={teamB} label="Team B" />
-                                ) : (
-                                    <UnknownTeamCard label="Team B" name={match.teamB} />
-                                )}
-                            </div>
-                        )}
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            {teamA ? (
+                                <TeamCard team={teamA} label="Team A" />
+                            ) : (
+                                <UnknownTeamCard label="Team A" name={match.teamA} />
+                            )}
+                            {teamB ? (
+                                <TeamCard team={teamB} label="Team B" />
+                            ) : (
+                                <UnknownTeamCard label="Team B" name={match.teamB} />
+                            )}
+                        </div>
                     </section>
                 </div>
             )}

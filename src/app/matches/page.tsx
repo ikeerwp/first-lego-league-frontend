@@ -4,32 +4,12 @@ import ErrorAlert from "@/app/components/error-alert";
 import PageShell from "@/app/components/page-shell";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { getEncodedResourceId } from "@/lib/halRoute";
+import { formatMatchTime } from "@/lib/matchUtils";
 import { parseErrorMessage } from "@/types/errors";
 import { Match } from "@/types/match";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
-
-function formatMatchTime(value?: string | null) {
-    if (!value) {
-        return "Not available";
-    }
-
-    const timeMatch = new RegExp(/^(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/).exec(value);
-    if (timeMatch) {
-        return `${timeMatch[1]}:${timeMatch[2]}`;
-    }
-
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-        return value;
-    }
-
-    return new Intl.DateTimeFormat("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-    }).format(date);
-}
 
 function getTeamsLabel(match: Match) {
     return `${match.teamA} vs ${match.teamB}`;
