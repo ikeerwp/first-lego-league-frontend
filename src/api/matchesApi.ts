@@ -27,6 +27,14 @@ export class MatchesService {
         );
     }
 
+    async getMatchesByEdition(editionUri: string): Promise<Match[]> {
+        return fetchHalCollection<Match>(
+            `${editionUri}?sort=startTime,asc&sort=id,asc&size=1000`,
+            this.authStrategy,
+            "matches"
+        );
+    }
+
     async getMatchById(id: string): Promise<Match> {
         const matchId = encodeURIComponent(id);
         return fetchHalResource<Match>(`/matches/${matchId}`, this.authStrategy);

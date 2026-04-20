@@ -1,3 +1,4 @@
+import { EditionsService } from "@/api/editionApi";
 import { MatchesService } from "@/api/matchesApi";
 import { UsersService } from "@/api/userApi";
 import { buttonVariants } from "@/app/components/button";
@@ -35,7 +36,7 @@ function getMatchKey(match: Match, index: number) {
     return match.link("self")?.href ?? `match-${index}`;
 }
 
-function MatchesTable({ matches }: Readonly<{ matches: Match[] }>) {
+function MatchesTable({ matches, yearQuery }: Readonly<{ matches: Match[], yearQuery: string }>) {
     return (
         <div className="overflow-hidden border border-border">
             <div className="overflow-x-auto">
@@ -65,7 +66,7 @@ function MatchesTable({ matches }: Readonly<{ matches: Match[] }>) {
                                     <td className="px-4 py-4 text-sm text-muted-foreground sm:px-5">
                                         {matchId ? (
                                             <Link
-                                                href={`/matches/${matchId}`}
+                                                href={`/matches/${matchId}${yearQuery}`}
                                                 className="hover:text-foreground hover:underline underline-offset-2"
                                             >
                                                 {getTeamsLabel(match)}
@@ -94,10 +95,13 @@ function getFriendlyMatchesError(error: unknown) {
     return `We could not load the matches. ${parsedMessage}`;
 }
 
-export default async function MatchesPage() {
+type PageSearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+export default async function MatchesPage({ searchParams }: Readonly<{ searchParams: PageSearchParams }>) {
     let matches: Match[] = [];
     let error: string | null = null;
     let currentUser: User | null = null;
+    let yearQuery = "";
 
     try {
         currentUser = await new UsersService(serverAuthProvider).getCurrentUser();
@@ -106,8 +110,26 @@ export default async function MatchesPage() {
     }
 
     try {
+        const params = await searchParams;
+        const yearParam = params.year;
+        const year = Array.isArray(yearParam) ? yearParam[0] : yearParam;
+        yearQuery = year ? `?year=${year}` : "";
+
         const service = new MatchesService(serverAuthProvider);
-        const response = await service.getMatches();
+        let response: Match[];
+
+        if (year) {
+            const editionsService = new EditionsService(serverAuthProvider);
+            const edition = await editionsService.getEditionByYear(year);
+
+            if (edition && edition.uri) {
+                response = await service.getMatchesByEdition(edition.uri + "/matches");
+            } else {
+                response = [];
+            }
+        } else {
+            response = await service.getMatches();
+        }
 
         matches = [...response].sort((left, right) => {
             const startTimeDifference = compareMatchTimes(left.startTime, right.startTime);
@@ -134,7 +156,7 @@ export default async function MatchesPage() {
             description="Browse the scheduled matches with timing details and participating teams."
             heroAside={isAdmin(currentUser) ? (
                 <Link
-                    href="/matches/new"
+                    href={`/matches/new${yearQuery}`}
                     className={buttonVariants({ variant: "default", size: "sm" })}
                 >
                     + Create
@@ -162,7 +184,7 @@ export default async function MatchesPage() {
                         <p className="text-sm text-muted-foreground">
                             Showing {matches.length} match{matches.length === 1 ? "" : "es"} fetched from the backend.
                         </p>
-                        <MatchesTable matches={matches} />
+                        <MatchesTable matches={matches} yearQuery={yearQuery} />
                     </div>
                 )}
             </div>

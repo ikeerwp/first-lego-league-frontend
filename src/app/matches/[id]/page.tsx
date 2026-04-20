@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 
 interface MatchDetailPageProps {
     readonly params: Promise<{ id: string }>;
+    readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 function getMatchTitle(match: Match | null, id: string) {
@@ -41,7 +42,7 @@ function InfoRow({ label, value }: Readonly<{ label: string; value: string }>) {
     );
 }
 
-function TeamCard({ team, label }: Readonly<{ team: Team; label: string }>) {
+function TeamCard({ team, label, yearQuery }: Readonly<{ team: Team; label: string; yearQuery: string }>) {
     const teamId = getEncodedResourceId(team.link("self")?.href ?? team.uri);
 
     const cardContent = (
@@ -65,7 +66,7 @@ function TeamCard({ team, label }: Readonly<{ team: Team; label: string }>) {
     );
 
     if (teamId) {
-        return <Link href={`/teams/${teamId}`}>{cardContent}</Link>;
+        return <Link href={`/teams/${teamId}${yearQuery}`}>{cardContent}</Link>;
     }
 
     return cardContent;
@@ -82,6 +83,11 @@ function UnknownTeamCard({ label, name }: Readonly<{ label: string; name?: strin
 
 export default async function MatchDetailPage(props: Readonly<MatchDetailPageProps>) {
     const { id } = await props.params;
+    const searchParams = await props.searchParams;
+    const yearParam = searchParams.year;
+    const year = Array.isArray(yearParam) ? yearParam[0] : yearParam;
+    const yearQuery = year ? `?year=${year}` : "";
+    
     const service = new MatchesService(serverAuthProvider);
 
     let match: Match | null = null;
@@ -156,12 +162,12 @@ export default async function MatchDetailPage(props: Readonly<MatchDetailPagePro
 
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             {teamA ? (
-                                <TeamCard team={teamA} label="Team A" />
+                                <TeamCard team={teamA} label="Team A" yearQuery={yearQuery} />
                             ) : (
                                 <UnknownTeamCard label="Team A" name={match.teamA} />
                             )}
                             {teamB ? (
-                                <TeamCard team={teamB} label="Team B" />
+                                <TeamCard team={teamB} label="Team B" yearQuery={yearQuery} />
                             ) : (
                                 <UnknownTeamCard label="Team B" name={match.teamB} />
                             )}

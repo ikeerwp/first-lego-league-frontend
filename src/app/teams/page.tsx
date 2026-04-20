@@ -66,11 +66,13 @@ type PageSearchParams = Promise<Record<string, string | string[] | undefined>>;
 export default async function TeamsPage({ searchParams }: Readonly<{ searchParams: PageSearchParams }>) {
     let teams: Team[] = [];
     let error: string | null = null;
+    let yearQuery = "";
 
     try {
         const params = await searchParams;
         const yearParam = params.year;
         const year = Array.isArray(yearParam) ? yearParam[0] : yearParam;
+        yearQuery = year ? `?year=${year}` : "";
         const service = new TeamsService(serverAuthProvider);
 
         if (year) {
@@ -116,7 +118,7 @@ export default async function TeamsPage({ searchParams }: Readonly<{ searchParam
                     <ul className="list-grid">
                         {teams.map((team, index) => {
                             const teamId = getEncodedResourceId(team.uri);
-                            const href = teamId ? `/teams/${teamId}` : null;
+                            const href = teamId ? `/teams/${teamId}${yearQuery}` : null;
                             return (
                                 <li key={getTeamKey(team, index)}>
                                     {href ? (
