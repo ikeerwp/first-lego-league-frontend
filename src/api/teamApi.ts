@@ -72,7 +72,6 @@ export class TeamsService {
     }
 
 
-
     async deleteTeam(id: string): Promise<void> {
         const teamId = getSafeEncodedId(id);
         await deleteHal(`/teams/${teamId}`, this.authStrategy);
