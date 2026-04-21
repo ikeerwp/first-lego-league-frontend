@@ -1,14 +1,18 @@
 import { EditionsService } from "@/api/editionApi";
 import { TeamsService } from "@/api/teamApi";
+import { UsersService } from "@/api/userApi";
+import { buttonVariants } from "@/app/components/button";
 import EmptyState from "@/app/components/empty-state";
 import ErrorAlert from "@/app/components/error-alert";
 import PageShell from "@/app/components/page-shell";
 import PaginationControls from "@/app/components/pagination-controls";
 import { serverAuthProvider } from "@/lib/authProvider";
+import { isAdmin } from "@/lib/authz";
 import { getEncodedResourceId } from "@/lib/halRoute";
-import { ApiError, parseErrorMessage } from "@/types/errors";
+import { ApiError, AuthenticationError, parseErrorMessage } from "@/types/errors";
 import type { HalPage } from "@/types/pagination";
 import { Team } from "@/types/team";
+import { User } from "@/types/user";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -77,6 +81,18 @@ export default async function TeamsPage({ searchParams }: Readonly<{ searchParam
     let teams: Team[] = [];
     let result: HalPage<Team> = { items: [], hasNext: false, hasPrev: false, currentPage: 0 };
     let error: string | null = null;
+    let currentUser: User | null = null;
+
+    try {
+        currentUser = await new UsersService(serverAuthProvider).getCurrentUser();
+    } catch (error) {
+        currentUser = null;
+        if (error instanceof AuthenticationError || (error instanceof ApiError && error.statusCode === 403)) {
+            console.warn("Current user is not authorized to access admin actions on the teams page.");
+        } else {
+            console.error("Failed to fetch current user on the teams page:", error);
+        }
+    }
 
     try {
         const service = new TeamsService(serverAuthProvider);
@@ -101,6 +117,11 @@ export default async function TeamsPage({ searchParams }: Readonly<{ searchParam
             eyebrow="Team management"
             title="Teams"
             description="Browse the teams currently registered in the FIRST LEGO League platform."
+            heroAside={isAdmin(currentUser) ? (
+                <Link href="/teams/new" className={buttonVariants({ variant: "default", size: "sm" })}>
+                    New Team
+                </Link>
+            ) : undefined}
         >
             <div className="space-y-6">
                 <div className="space-y-3">

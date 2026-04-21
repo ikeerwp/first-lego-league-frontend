@@ -2,32 +2,35 @@
 
 import { Button } from '@/app/components/button';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
-import { User } from '@/types/user';
+import { TeamMemberSnapshot } from '@/types/team';
 import { useState } from 'react';
 import { AddMemberForm } from './add-member-form';
 import { DeleteMemberDialog } from './delete-member-dialog';
 
-interface TeamMember {
-    id: string;
-    name: string;
-    role: string;
-    uri: string;
-}
-
 interface TeamMembersManagerProps {
     teamId: string;
-    initialMembers: User[];
+    initialMembers: TeamMemberSnapshot[];
     isCoach: boolean;
     isAdmin: boolean;
+}
+
+function getMemberKey(member: TeamMemberSnapshot, index: number) {
+    if (member.uri !== undefined) {
+        return member.uri;
+    }
+
+    if (member.id === undefined) {
+        return `member-${index}`;
+    }
+
+    return String(member.id);
 }
 
 export function TeamMembersManager({ teamId, initialMembers, isCoach, isAdmin }: Readonly<TeamMembersManagerProps>) {
     const isAuthorized = isCoach || isAdmin;
     const { members, addMember, removeMember, isFull } = useTeamMembers(teamId, initialMembers);
     const [showForm, setShowForm] = useState(false);
-    const [selected, setSelected] = useState<TeamMember | null>(null);
-
-    const castedMembers = members as unknown as TeamMember[];
+    const [selected, setSelected] = useState<{ name: string; uri: string } | null>(null);
 
     return (
         <div className="space-y-4">
@@ -37,8 +40,8 @@ export function TeamMembersManager({ teamId, initialMembers, isCoach, isAdmin }:
 
             {showForm && (
                 <AddMemberForm
-                    onSubmit={async (name, role) => {
-                        const success = await addMember(name, role);
+                    onSubmit={async (name, role, birthDate, gender) => {
+                        const success = await addMember(name, role, birthDate, gender);
                         if (success) setShowForm(false);
                         return success;
                     }}
@@ -47,19 +50,41 @@ export function TeamMembersManager({ teamId, initialMembers, isCoach, isAdmin }:
             )}
 
             <ul className="space-y-2">
-                {castedMembers.map((m) => (
-                    <li key={m.uri || m.id} className="flex items-center justify-between border border-border p-3 rounded-lg bg-card">
-                        <div>
-                            <span className="font-medium block">{m.name}</span>
-                            <span className="text-xs text-muted-foreground uppercase">{m.role}</span>
-                        </div>
-                        {isAuthorized && (
-                            <Button variant="destructive" size="sm" onClick={() => setSelected(m)}>
-                                Delete
-                            </Button>
-                        )}
-                    </li>
-                ))}
+                {members.map((m, index) => {
+                    const memberUri = m.uri;
+                    const memberKey = getMemberKey(m, index);
+
+                    return (
+                        <li
+                            key={memberKey}
+                            className="flex items-center justify-between rounded-lg border border-border bg-card p-3"
+                        >
+                            <div>
+                                <span className="block font-medium">{m.name ?? "Unnamed member"}</span>
+                                <span className="text-xs text-muted-foreground uppercase">
+                                    {m.role ?? "Member"}
+                                </span>
+                            </div>
+                            {isAuthorized && (
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() =>
+                                        memberUri
+                                            ? setSelected({
+                                                name: m.name ?? "Unnamed member",
+                                                uri: memberUri,
+                                            })
+                                            : null
+                                    }
+                                    disabled={!memberUri}
+                                >
+                                    Delete
+                                </Button>
+                            )}
+                        </li>
+                    );
+                })}
             </ul>
 
             {selected && (

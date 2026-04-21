@@ -2,19 +2,34 @@
 import { useState, useCallback, useMemo } from 'react';
 import { TeamsService } from '@/api/teamApi';
 import { clientAuthProvider } from '@/lib/authProvider';
-import { User } from '@/types/user';
-import { MAX_TEAM_MEMBERS } from '@/types/team';
+import { MAX_TEAM_MEMBERS, TeamMember, TeamMemberGender, TeamMemberSnapshot } from '@/types/team';
 
-export function useTeamMembers(teamId: string, initialMembers: User[] = []) {
-    const [members, setMembers] = useState<User[]>(initialMembers);
+function hasHalSelfLink(member: TeamMember | TeamMemberSnapshot): member is TeamMember {
+    return "link" in member && typeof member.link === "function";
+}
+
+function toTeamMemberSnapshot(member: TeamMember | TeamMemberSnapshot): TeamMemberSnapshot {
+    const selfHref = hasHalSelfLink(member)
+        ? member.link("self")?.href
+        : undefined;
+
+    return {
+        id: member.id,
+        name: member.name,
+        birthDate: member.birthDate,
+        gender: member.gender,
+        tShirtSize: member.tShirtSize,
+        role: member.role,
+        uri: member.uri ?? selfHref,
+    };
+}
+
+export function useTeamMembers(teamId: string, initialMembers: TeamMemberSnapshot[] = []) {
+    const [members, setMembers] = useState<TeamMemberSnapshot[]>(() =>
+        initialMembers.map(toTeamMemberSnapshot)
+    );
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [prevInitialMembers, setPrevInitialMembers] = useState<User[]>(initialMembers);
-
-    if (initialMembers !== prevInitialMembers) {
-        setPrevInitialMembers(initialMembers);
-        setMembers(initialMembers);
-    }
 
     const service = useMemo(
         () => new TeamsService(clientAuthProvider),
@@ -22,7 +37,7 @@ export function useTeamMembers(teamId: string, initialMembers: User[] = []) {
     );
 
     const addMember = useCallback(
-        async (name: string, role: string) => {
+        async (name: string, role: string, birthDate: string, gender: TeamMemberGender) => {
             if (!teamId) {
                 setError('Missing teamId');
                 return false;
@@ -37,8 +52,10 @@ export function useTeamMembers(teamId: string, initialMembers: User[] = []) {
                 const newMember = await service.addTeamMember(teamId, {
                     name,
                     role,
+                    birthDate,
+                    gender,
                 });
-                setMembers(prev => [...prev, newMember as unknown as User]);
+                setMembers(prev => [...prev, toTeamMemberSnapshot(newMember)]);
                 return true;
             } catch {
                 setError('Failed to add member');
@@ -53,13 +70,7 @@ export function useTeamMembers(teamId: string, initialMembers: User[] = []) {
     const removeMember = useCallback(
         (memberUri: string) => {
             if (!memberUri) return;
-            setMembers(prev =>
-                prev.filter(m => {
-                    const memberData = m as { _links?: { self: { href: string } }, uri?: string };
-                    const href = memberData._links?.self?.href || memberData.uri;
-                    return href !== memberUri;
-                })
-            );
+            setMembers(prev => prev.filter(m => m.uri !== memberUri));
         },
         []
     );
