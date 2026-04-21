@@ -23,20 +23,17 @@ export default function Loginbar() {
     const router = useRouter();
     const { user, setUser } = useAuth();
 
-    const [hydrated, setHydrated] = useState(false);
     const [loadingUser, setLoadingUser] = useState(true);
 
     useEffect(() => {
-        setHydrated(true);
-
-        if (!hasAuthCookie()) {
-            setLoadingUser(false);
-            return;
-        }
-
         let active = true;
 
         async function load() {
+            if (!hasAuthCookie()) {
+                if (active) setLoadingUser(false);
+                return;
+            }
+
             try {
                 const service = new UsersService(clientAuthProvider);
                 const currentUser = await service.getCurrentUser();
@@ -60,14 +57,6 @@ export default function Loginbar() {
         localStorage.removeItem(AUTH_COOKIE_NAME);
         setUser(null);
         router.push("/");
-    }
-
-    if (!hydrated) {
-        return (
-            <div className="flex flex-wrap items-center gap-2">
-                <div className="h-8 w-20 bg-muted animate-pulse rounded" />
-            </div>
-        );
     }
 
     if (user) {
