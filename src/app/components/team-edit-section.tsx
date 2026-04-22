@@ -20,10 +20,18 @@ interface TeamEditSectionProps {
     };
 }
 
-// 🔧 helper seguro para FormData
+// 🔧 helpers seguros
 function getStringOrNull(formData: FormData, key: string): string | null {
     const value = formData.get(key);
     return typeof value === 'string' && value.trim() !== '' ? value : null;
+}
+
+function getNumberOrNull(formData: FormData, key: string): number | null {
+    const value = formData.get(key);
+    if (typeof value !== 'string' || value.trim() === '') return null;
+
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
 }
 
 export default function TeamEditSection({ team }: TeamEditSectionProps) {
@@ -45,24 +53,19 @@ export default function TeamEditSection({ team }: TeamEditSectionProps) {
         try {
             const formData = new FormData(e.currentTarget);
 
-            // ✅ payload tipado correctamente
+            // ✅ payload limpio y seguro
             const payload = {
                 id: team.id,
-                name: String(formData.get('name') || ''),
+                name: String(formData.get('name') || '').trim(),
                 city: getStringOrNull(formData, 'city'),
                 educationalCenter: getStringOrNull(formData, 'educationalCenter'),
                 category: String(formData.get('category') || ''),
-                foundationYear: formData.get('foundationYear')
-                    ? Number(formData.get('foundationYear'))
-                    : null,
+                foundationYear: getNumberOrNull(formData, 'foundationYear'),
                 inscriptionDate: getStringOrNull(formData, 'inscriptionDate'),
             };
 
-            const result = await updateTeam(payload);
-
-            if (!result?.success) {
-                throw new Error(result?.error || 'Failed to update team.');
-            }
+            // ❗ updateTeam usa throw-based errors (NO success/error)
+            await updateTeam(payload);
 
             router.refresh();
 
