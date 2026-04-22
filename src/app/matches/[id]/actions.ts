@@ -21,8 +21,9 @@ export async function registerMatchResult(
         throw new Error("You are not allowed to record match results.");
     }
 
-    if (data.score.teamAScore < 0 || data.score.teamBScore < 0) {
-        throw new Error("Scores cannot be negative.");
+    const { teamAScore, teamBScore } = data.score;
+    if (!Number.isFinite(teamAScore) || !Number.isFinite(teamBScore) || teamAScore < 0 || teamBScore < 0) {
+        throw new Error("Scores must be non-negative whole numbers.");
     }
 
     try {

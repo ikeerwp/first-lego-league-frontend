@@ -203,6 +203,7 @@ export default async function MatchDetailPage(props: Readonly<MatchDetailPagePro
                         {teamsError && <ErrorAlert message={teamsError} />}
 
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+<<<<<<< HEAD
                             {displayTeamA ? (
                                 <TeamCard team={displayTeamA} label="Team A" yearQuery={yearQuery} />
                             ) : (
@@ -210,6 +211,15 @@ export default async function MatchDetailPage(props: Readonly<MatchDetailPagePro
                             )}
                             {displayTeamB ? (
                                 <TeamCard team={displayTeamB} label="Team B" yearQuery={yearQuery} />
+=======
+                            {(teamA ?? formTeamA) ? (
+                                <TeamCard team={(teamA ?? formTeamA) as Team} label="Team A" yearQuery={yearQuery} />
+                            ) : (
+                                <UnknownTeamCard label="Team A" name={match.teamA} />
+                            )}
+                            {(teamB ?? formTeamB) ? (
+                                <TeamCard team={(teamB ?? formTeamB) as Team} label="Team B" yearQuery={yearQuery} />
+>>>>>>> 848670a (fix(matches): address code review warnings and improve score validation)
                             ) : (
                                 <UnknownTeamCard label="Team B" name={match.teamB} />
                             )}
@@ -261,7 +271,11 @@ export default async function MatchDetailPage(props: Readonly<MatchDetailPagePro
                                 </button>
                             ) : (
                                 <RecordResultForm
+<<<<<<< HEAD
                                     matchId={numericMatchId}
+=======
+                                    matchId={numericMatchId!}
+>>>>>>> 848670a (fix(matches): address code review warnings and improve score validation)
                                     teamAId={teamAId}
                                     teamBId={teamBId}
                                     teamAName={teamADisplayName}
