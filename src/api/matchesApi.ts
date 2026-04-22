@@ -7,7 +7,7 @@ import { Round } from "@/types/round";
 import { Team } from "@/types/team";
 import { ApiError } from "@/types/errors";
 import type { HalPage } from "@/types/pagination";
-import { createHalResource, fetchHalCollection, fetchHalPagedCollection, fetchHalResource, postHal } from "./halClient";
+import { createHalResource, deleteHal, fetchHalCollection, fetchHalPagedCollection, fetchHalResource, postHal } from "./halClient";
 
 export type CreateMatchPayload = {
     startTime: string;
@@ -114,5 +114,10 @@ export class MatchesService {
             resultSaved: raw.resultSaved,
             rankingUpdated: raw.rankingUpdated,
         };
+    }
+
+    async deleteMatch(id: string): Promise<void> {
+        const matchId = encodeURIComponent(id);
+        await deleteHal(`/matches/${matchId}`, this.authStrategy);
     }
 }

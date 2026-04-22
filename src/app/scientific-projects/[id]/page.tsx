@@ -1,13 +1,17 @@
 import { ScientificProjectsService } from "@/api/scientificProjectApi";
+import { UsersService } from "@/api/userApi";
 import ErrorAlert from "@/app/components/error-alert";
 import PageShell from "@/app/components/page-shell";
 import { InfoRow } from "@/app/components/info-row";
 import { TeamCard } from "@/app/components/team-card";
 import { serverAuthProvider } from "@/lib/authProvider";
+import { isAdmin } from "@/lib/authz";
 import { fetchHalResource } from "@/api/halClient";
 import { NotFoundError, parseErrorMessage } from "@/types/errors";
 import { ScientificProject } from "@/types/scientificProject";
 import { Team } from "@/types/team";
+import { User } from "@/types/user";
+import ScientificProjectDeleteSection from "./scientific-project-delete-section";
 
 export const dynamic = "force-dynamic";
 
@@ -30,8 +34,15 @@ export default async function ScientificProjectDetailPage(props: Readonly<Scient
 
     let project: ScientificProject | null = null;
     let team: Team | null = null;
+    let currentUser: User | null = null;
     let projectError: string | null = null;
     let teamError: string | null = null;
+
+    try {
+        currentUser = await new UsersService(serverAuthProvider).getCurrentUser();
+    } catch (e) {
+        console.error("Failed to fetch current user:", e);
+    }
 
     try {
         project = await service.getScientificProjectById(id);
@@ -59,6 +70,12 @@ export default async function ScientificProjectDetailPage(props: Readonly<Scient
             description={project?.score !== undefined && project?.score !== null ? `Score: ${project.score} pts` : undefined}
         >
             {projectError && <ErrorAlert message={projectError} />}
+
+            {!projectError && project && isAdmin(currentUser) && (
+                <div className="flex justify-end">
+                    <ScientificProjectDeleteSection projectId={id} />
+                </div>
+            )}
 
             {!projectError && project && (
                 <div className="space-y-8">
