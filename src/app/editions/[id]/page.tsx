@@ -30,6 +30,7 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
     const { id } = await props.params;
     const service = new EditionsService(serverAuthProvider);
 
+    let currentUser: User | null = null;
     let edition: Edition | null = null;
     let teams: Team[] = [];
     let error: string | null = null;
@@ -42,6 +43,12 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
         error = e instanceof NotFoundError
             ? "This edition does not exist."
             : parseErrorMessage(e);
+    }
+
+    try {
+        currentUser = await new UsersService(serverAuthProvider).getCurrentUser();
+    } catch (e) {
+        console.error("Failed to fetch current user:", e);
     }
 
     if (edition && !error) {
@@ -57,13 +64,23 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
         <div className="flex min-h-screen items-center justify-center bg-background">
             <div className="w-full max-w-3xl px-4 py-10">
                 <div className="w-full rounded-lg border border-border bg-card p-6 shadow-sm">
-                    <h1 className="mb-2 text-2xl font-semibold text-foreground">{getEditionTitle(edition, id)}</h1>
-                    {edition?.venueName && (
-                        <p className="text-sm text-muted-foreground">{edition.venueName}</p>
-                    )}
-                    {edition?.description && (
-                        <p className="mt-2 text-sm text-muted-foreground">{edition.description}</p>
-                    )}
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <h1 className="mb-2 text-2xl font-semibold text-foreground">{getEditionTitle(edition, id)}</h1>
+                            {edition?.venueName && (
+                                <p className="text-sm text-muted-foreground">{edition.venueName}</p>
+                            )}
+                            {edition?.description && (
+                                <p className="mt-2 text-sm text-muted-foreground">{edition.description}</p>
+                            )}
+                        </div>
+
+                        {currentUser && isAdmin(currentUser) && (
+                            <Link href={`/editions/${id}/edit`} className={buttonVariants({ variant: "default", size: "sm" })}>
+                                ✏️ edit
+                            </Link>
+                        )}
+                    </div>
 
                     {error && (
                         <div className="mt-6">

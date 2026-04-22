@@ -125,8 +125,13 @@ export default function NewEditionForm() {
                 </p>
             </div>
 
-            <Button type="submit" className="mt-2 w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Creating..." : "Create edition"}
+            <Button
+                type="submit"
+                className="mt-2 w-full"
+                loading={isSubmitting}
+                loadingText="Creating edition..."
+            >
+                Submit
             </Button>
         </form>
     );

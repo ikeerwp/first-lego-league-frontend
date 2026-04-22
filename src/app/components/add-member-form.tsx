@@ -45,8 +45,6 @@ export function AddMemberForm({
         }
     };
 
-    const isDisabled = isLoading || !name.trim() || !role || !birthDate || !gender;
-
     return (
         <form onSubmit={handleSubmit} className="space-y-3 border p-4 rounded bg-white dark:bg-zinc-900 shadow-sm">
             <div>
@@ -128,8 +126,13 @@ export function AddMemberForm({
             </div>
 
             <div className="flex gap-2 pt-2">
-                <Button type="submit" disabled={isDisabled}>
-                    {isLoading ? 'Adding...' : 'Add Member'}
+                <Button
+                    type="submit"
+                    loading={isLoading}
+                    loadingText="Adding member..."
+                    disabled={!name.trim() || !role || !birthDate}
+                >
+                    Add Member
                 </Button>
 
                 <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>

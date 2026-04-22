@@ -2,12 +2,19 @@ import type { AuthStrategy } from "@/lib/authProvider";
 import { Edition } from "@/types/edition";
 import type { HalPage } from "@/types/pagination";
 import { Team } from "@/types/team";
-import { createHalResource, fetchHalCollection, fetchHalPagedCollection, fetchHalResource } from "./halClient";
+
+import { createHalResource, fetchHalCollection, fetchHalPagedCollection, fetchHalResource, updateHalResource } from "./halClient";
 
 export type CreateEditionPayload = {
     year: number;
     venueName: string;
     description: string;
+};
+
+export type UpdateEditionPayload = {
+    year?: number;
+    venueName?: string;
+    description?: string;
 };
 
 export class EditionsService {
@@ -43,5 +50,10 @@ export class EditionsService {
 
     async createEdition(data: CreateEditionPayload): Promise<Edition> {
         return createHalResource<Edition>("/editions", data, this.authStrategy, "edition");
+    }
+
+    async updateEdition(id: string, data: UpdateEditionPayload): Promise<Edition> {
+        const editionId = encodeURIComponent(id);
+        return updateHalResource<Edition>(`/editions/${editionId}`, data, this.authStrategy, "edition");
     }
 }

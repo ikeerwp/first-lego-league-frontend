@@ -1,4 +1,5 @@
 import { MatchesService } from "@/api/matchesApi";
+import { UsersService } from "@/api/userApi";
 import ErrorAlert from "@/app/components/error-alert";
 import PageShell from "@/app/components/page-shell";
 import { serverAuthProvider } from "@/lib/authProvider";
@@ -7,8 +8,13 @@ import { getEncodedResourceId } from "@/lib/halRoute";
 import { formatMatchTime } from "@/lib/matchUtils";
 import { NotFoundError, parseErrorMessage } from "@/types/errors";
 import { Match } from "@/types/match";
+import { MatchResult } from "@/types/matchResult";
 import { Team } from "@/types/team";
+import { API_BASE_URL } from "@/api/halClient";
+import { User } from "@/types/user";
 import Link from "next/link";
+import MatchDeleteSection from "./match-delete-section";
+import RecordResultForm from "./record-result-form";
 
 export const dynamic = "force-dynamic";
 
@@ -93,8 +99,24 @@ export default async function MatchDetailPage(props: Readonly<MatchDetailPagePro
 
     let match: Match | null = null;
     let teams: Team[] = [];
+    let currentUser: User | null = null;
     let matchError: string | null = null;
     let teamsError: string | null = null;
+    let isAuthorized = false;
+    let formTeamA: Team | null = null;
+    let formTeamB: Team | null = null;
+    let matchResults: MatchResult[] = [];
+    let teamAId = "";
+    let teamBId = "";
+    let teamADisplayName = "Team A";
+    let teamBDisplayName = "Team B";
+
+    try {
+        currentUser = await new UsersService(serverAuthProvider).getCurrentUser();
+        isAuthorized = isAdmin(currentUser) || isReferee(currentUser);
+    } catch (e) {
+        console.error("[MatchDetail] getCurrentUser failed:", e);
+    }
 
     try {
         match = await service.getMatchById(id);
@@ -107,24 +129,52 @@ export default async function MatchDetailPage(props: Readonly<MatchDetailPagePro
     }
 
     if (match && !matchError) {
-        try {
-            teams = await service.getMatchTeams(id);
-        } catch (e) {
-            console.error("Failed to fetch match teams:", e);
-            teamsError = `Could not load team information. ${parseErrorMessage(e)}`;
-        }
+        const matchUri = `${API_BASE_URL}/matches/${decodeURIComponent(id)}`;
+
+        await Promise.all([
+            service.getMatchTeams(id).then((t) => { teams = t; }).catch((e) => {
+                console.error("Failed to fetch match teams:", e);
+                teamsError = `Could not load team information. ${parseErrorMessage(e)}`;
+            }),
+            service.getMatchTeamA(id).then((t) => {
+                formTeamA = t;
+                const raw = t as unknown as { name?: string; id?: string; uri?: string };
+                teamADisplayName = raw.name ?? raw.id ?? "Team A";
+                const href = t.link("self")?.href ?? raw.uri ?? "";
+                teamAId = decodeURIComponent(href.split("/").pop() ?? "");
+            }).catch(() => null),
+            service.getMatchTeamB(id).then((t) => {
+                formTeamB = t;
+                const raw = t as unknown as { name?: string; id?: string; uri?: string };
+                teamBDisplayName = raw.name ?? raw.id ?? "Team B";
+                const href = t.link("self")?.href ?? raw.uri ?? "";
+                teamBId = decodeURIComponent(href.split("/").pop() ?? "");
+            }).catch(() => null),
+            service.getMatchResults(matchUri).then((r) => { matchResults = r; }).catch(() => null),
+        ]);
     }
 
     const teamA = teams.find((t) => t.name === match?.teamA) ?? teams[0] ?? null;
     const teamB = teams.find((t) => t.name === match?.teamB) ?? teams[1] ?? null;
+    const numericMatchId = Number.parseInt(decodeURIComponent(id), 10) || null;
+    const displayTeamA = teamA ?? formTeamA;
+    const displayTeamB = teamB ?? formTeamB;
+
+    const displayState = matchResults.length > 0 ? "COMPLETED" : match?.state;
 
     return (
         <PageShell
             eyebrow="Match details"
             title={getMatchTitle(match, id)}
-            description={match?.state ? `Status: ${match.state}` : undefined}
+            description={displayState ? `Status: ${displayState}` : undefined}
         >
             {matchError && <ErrorAlert message={matchError} />}
+
+            {!matchError && match && isAdmin(currentUser) && (
+                <div className="flex justify-end">
+                    <MatchDeleteSection matchId={id} />
+                </div>
+            )}
 
             {!matchError && match && (
                 <div className="space-y-8">
@@ -144,7 +194,7 @@ export default async function MatchDetailPage(props: Readonly<MatchDetailPagePro
                                 {match.competitionTable && (
                                     <InfoRow label="Competition table" value={match.competitionTable} />
                                 )}
-                                {match.state && <InfoRow label="State" value={match.state} />}
+                                {displayState && <InfoRow label="State" value={displayState} />}
                                 {match.referee && <InfoRow label="Referee" value={match.referee} />}
                             </div>
                         </div>
@@ -162,18 +212,73 @@ export default async function MatchDetailPage(props: Readonly<MatchDetailPagePro
                         {teamsError && <ErrorAlert message={teamsError} />}
 
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            {teamA ? (
-                                <TeamCard team={teamA} label="Team A" yearQuery={yearQuery} />
+                            {displayTeamA ? (
+                                <TeamCard team={displayTeamA} label="Team A" yearQuery={yearQuery} />
                             ) : (
                                 <UnknownTeamCard label="Team A" name={match.teamA} />
                             )}
-                            {teamB ? (
-                                <TeamCard team={teamB} label="Team B" yearQuery={yearQuery} />
+                            {displayTeamB ? (
+                                <TeamCard team={displayTeamB} label="Team B" yearQuery={yearQuery} />
                             ) : (
                                 <UnknownTeamCard label="Team B" name={match.teamB} />
                             )}
                         </div>
                     </section>
+
+                    {/* Match Results */}
+                    {matchResults.length > 0 && formTeamA && formTeamB && (
+                        <section aria-labelledby="results-heading">
+                            <div className="mb-4 space-y-1">
+                                <div className="page-eyebrow">Scores</div>
+                                <h2 id="results-heading" className="section-title">
+                                    Match Results
+                                </h2>
+                            </div>
+                            <div className="rounded-lg border border-border bg-card p-5">
+                                <div className="space-y-3">
+                                    {matchResults.map((result, i) => {
+                                        const team = i === 0 ? formTeamA : formTeamB;
+                                        const teamName = team?.name ?? team?.id ?? (i === 0 ? "Team A" : "Team B");
+                                        return (
+                                            <div key={result.link("self")?.href ?? i} className="flex flex-col gap-0.5 sm:flex-row sm:gap-2">
+                                                <span className="min-w-36 text-sm font-medium text-foreground">{teamName}</span>
+                                                <span className="text-sm text-muted-foreground">{result.score} pts</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </section>
+                    )}
+
+                    {/* Referee actions */}
+                    {isAuthorized && formTeamA && formTeamB && numericMatchId && (
+                        <section aria-labelledby="record-result-heading">
+                            <div className="mb-4 space-y-1">
+                                <div className="page-eyebrow">Referee actions</div>
+                                <h2 id="record-result-heading" className="section-title">
+                                    {matchResults.length > 0 ? "Edit Result" : "Record Result"}
+                                </h2>
+                            </div>
+                            {matchResults.length > 0 ? (
+                                // TODO: implement edit result form (new issue)
+                                <button
+                                    disabled
+                                    className="rounded border border-border bg-card px-4 py-2 text-sm text-muted-foreground opacity-50 cursor-not-allowed"
+                                >
+                                    Edit Result (coming soon)
+                                </button>
+                            ) : (
+                                <RecordResultForm
+                                    matchId={numericMatchId}
+                                    teamAId={teamAId}
+                                    teamBId={teamBId}
+                                    teamAName={teamADisplayName}
+                                    teamBName={teamBDisplayName}
+                                />
+                            )}
+                        </section>
+                    )}
                 </div>
             )}
         </PageShell>

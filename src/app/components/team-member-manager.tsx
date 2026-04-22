@@ -28,14 +28,16 @@ function getMemberKey(member: TeamMemberSnapshot, index: number) {
 
 export function TeamMembersManager({ teamId, initialMembers, isCoach, isAdmin }: Readonly<TeamMembersManagerProps>) {
     const isAuthorized = isCoach || isAdmin;
-    const { members, addMember, removeMember, isFull } = useTeamMembers(teamId, initialMembers);
+    const { members, addMember, removeMember, isFull, isLoading } = useTeamMembers(teamId, initialMembers);
     const [showForm, setShowForm] = useState(false);
     const [selected, setSelected] = useState<{ name: string; uri: string } | null>(null);
 
     return (
         <div className="space-y-4">
             {isAuthorized && !isFull && (
-                <Button onClick={() => setShowForm(true)}>Add Member</Button>
+                <Button onClick={() => setShowForm(true)} disabled={isLoading}>
+                    Add Member
+                </Button>
             )}
 
             {showForm && (
@@ -46,6 +48,7 @@ export function TeamMembersManager({ teamId, initialMembers, isCoach, isAdmin }:
                         return success;
                     }}
                     onCancel={() => setShowForm(false)}
+                    isLoading={isLoading}
                 />
             )}
 

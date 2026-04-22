@@ -1,43 +1,21 @@
 import { EditionsService } from "@/api/editionApi";
 import { ScientificProjectsService } from "@/api/scientificProjectApi";
-import PageShell from "@/app/components/page-shell";
-import ErrorAlert from "@/app/components/error-alert";
-import EmptyState from "@/app/components/empty-state";
-import PaginationControls from "@/app/components/pagination-controls";
 import { buttonVariants } from "@/app/components/button";
+import EmptyState from "@/app/components/empty-state";
+import ErrorAlert from "@/app/components/error-alert";
+import PageShell from "@/app/components/page-shell";
+import PaginationControls from "@/app/components/pagination-controls";
+import { ScientificProjectCardLink } from "@/app/components/scientific-project-card";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { getEncodedResourceId } from "@/lib/halRoute";
-import { ScientificProject } from "@/types/scientificProject";
-import type { HalPage } from "@/types/pagination";
 import { parseErrorMessage } from "@/types/errors";
+import type { HalPage } from "@/types/pagination";
+import { ScientificProject } from "@/types/scientificProject";
 import Link from "next/link";
 
-export const dynamic = "force-dynamic";
+type PageSearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const PAGE_SIZE = 5;
-
-function ScientificProjectCard({ project, index }: Readonly<{ project: ScientificProject; index: number }>) {
-    return (
-        <div className="list-card block h-full pl-7 transition-colors hover:bg-secondary/30">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="min-w-0 space-y-2">
-                    <div className="list-kicker">Scientific Project #{index + 1}</div>
-                    <div className="list-title">
-                        {project.comments ? project.comments : `Project ${index + 1}`}
-                    </div>
-                    {project.score !== undefined && project.score !== null && (
-                        <div className="list-support">Score: {project.score}</div>
-                    )}
-                </div>
-                {project.score !== undefined && project.score !== null && (
-                    <div className="status-badge">{project.score} pts</div>
-                )}
-            </div>
-        </div>
-    );
-}
-
-type PageSearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export default async function ScientificProjectsPage({ searchParams }: Readonly<{ searchParams: PageSearchParams }>) {
     const params = await searchParams;
@@ -103,19 +81,11 @@ export default async function ScientificProjectsPage({ searchParams }: Readonly<
                 {!error && projects.length > 0 && (
                     <>
                         <ul className="list-grid">
-                            {projects.map((project, index) => {
-                                const projectId = getEncodedResourceId(project.uri);
-                                const card = <ScientificProjectCard project={project} index={index} />;
-                                return (
-                                    <li key={project.uri ?? index}>
-                                        {projectId ? (
-                                            <Link href={`/scientific-projects/${projectId}${yearQuery}`} className="block h-full">
-                                                {card}
-                                            </Link>
-                                        ) : card}
-                                    </li>
-                                );
-                            })}
+                            {projects.map((project, index) => (
+                                <li key={project.uri ?? project.link("self")?.href ?? index}>
+                                    <ScientificProjectCardLink project={project} index={index} />
+                                </li>
+                            ))}
                         </ul>
                         {!year && (
                             <PaginationControls
