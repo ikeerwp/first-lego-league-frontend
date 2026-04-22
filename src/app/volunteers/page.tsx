@@ -1,41 +1,10 @@
 import { VolunteersService } from "@/api/volunteerApi";
-import EmptyState from "@/app/components/empty-state";
 import ErrorAlert from "@/app/components/error-alert";
 import PageShell from "@/app/components/page-shell";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { parseErrorMessage } from "@/types/errors";
 import { Volunteer } from "@/types/volunteer";
-
-function VolunteerList({ title, typePlural, volunteers, emptyMessage }: Readonly<{ title: string, typePlural: string, volunteers: Volunteer[], emptyMessage: string }>) {
-    return (
-        <div className="space-y-4 pt-4">
-            <h3 className="text-xl font-semibold tracking-tight">{title}</h3>
-            {volunteers.length === 0 ? (
-                <EmptyState
-                    title={`No ${typePlural} found`}
-                    description={emptyMessage}
-                />
-            ) : (
-                <ul className="list-grid">
-                    {volunteers.map((v, idx) => {
-                        const id = v.name ? `${v.type}-${v.name}-${idx}` : `${v.type}-${idx}`;
-                        return (
-                            <li key={id} className="list-card pl-7">
-                                <div className="list-kicker">{v.type}</div>
-                                <div className="list-title block font-medium">
-                                    {v.name || "Unknown"}
-                                </div>
-                                {v.emailAddress && (
-                                    <div className="list-support">{v.emailAddress}</div>
-                                )}
-                            </li>
-                        );
-                    })}
-                </ul>
-            )}
-        </div>
-    );
-}
+import VolunteersClient from "./_volunteers-client";
 
 export default async function VolunteersPage() {
     const service = new VolunteersService(serverAuthProvider);
@@ -64,26 +33,7 @@ export default async function VolunteersPage() {
                 {error && <ErrorAlert message={error} />}
 
                 {!error && (
-                    <div className="space-y-12 shrink-0">
-                        <VolunteerList 
-                            title="Judges" 
-                            typePlural="judges" 
-                            volunteers={judges} 
-                            emptyMessage="There are currently no judges registered for the competition." 
-                        />
-                        <VolunteerList 
-                            title="Referees" 
-                            typePlural="referees" 
-                            volunteers={referees} 
-                            emptyMessage="There are currently no referees registered for the competition." 
-                        />
-                        <VolunteerList 
-                            title="Floaters" 
-                            typePlural="floaters" 
-                            volunteers={floaters} 
-                            emptyMessage="There are currently no floaters registered for the competition." 
-                        />
-                    </div>
+                    <VolunteersClient judges={judges} referees={referees} floaters={floaters} />
                 )}
             </div>
         </PageShell>
