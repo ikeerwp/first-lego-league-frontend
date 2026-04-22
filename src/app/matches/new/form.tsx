@@ -293,8 +293,14 @@ export default function NewMatchForm({
                 <FieldError id="referee-error" message={errors.referee?.message} />
             </div>
 
-            <Button type="submit" className="mt-2 w-full" disabled={isSubmitting || !isReadyToSubmit}>
-                {isSubmitting ? "Creating..." : "Create match"}
+            <Button
+                type="submit"
+                className="mt-2 w-full"
+                disabled={!isReadyToSubmit}
+                loading={isSubmitting}
+                loadingText="Creating match..."
+            >
+                Create match
             </Button>
         </form>
     );

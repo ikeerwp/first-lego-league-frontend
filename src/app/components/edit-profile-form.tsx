@@ -46,7 +46,7 @@ export default function EditProfileForm({ userId, currentEmail }: EditProfileFor
         setErrorMessage(null);
 
         const payload: { email?: string; password?: string } = {};
-        
+
         if (data.email && data.email !== currentEmail) {
             payload.email = data.email;
         }
@@ -148,8 +148,13 @@ export default function EditProfileForm({ userId, currentEmail }: EditProfileFor
                     )}
                 </div>
 
-                <Button type="submit" className="mt-2 w-full max-w-xs" disabled={isSubmitting}>
-                    {isSubmitting ? "Saving…" : "Save changes"}
+                <Button
+                    type="submit"
+                    className="mt-2 w-full max-w-xs"
+                    loading={isSubmitting}
+                    loadingText="Saving changes..."
+                >
+                    Save changes
                 </Button>
             </form>
         </div>

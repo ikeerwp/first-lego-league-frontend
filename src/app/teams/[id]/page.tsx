@@ -142,6 +142,19 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
                         <p><strong>Coach:</strong> {coachName}</p>
                     </div>
 
+                    <h2 className="mt-8 mb-4 text-xl font-semibold">Team Members</h2>
+
+                    {!membersError && (
+                        <TeamMembersManager
+                            key={`${id}-${members.length}`}
+                            teamId={id}
+                            initialMembers={members}
+                            isCoach={isCoach}
+                            isAdmin={isAdmin}
+                        />
+                    )}
+                    {membersError && <ErrorAlert message={membersError} />}
+
                     <section aria-labelledby="team-projects-heading">
                         <h2 id="team-projects-heading" className="mt-8 mb-4 text-xl font-semibold">
                             Scientific Projects
@@ -169,19 +182,6 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
                             </ul>
                         )}
                     </section>
-
-                    <h2 className="mt-8 mb-4 text-xl font-semibold">Team Members</h2>
-
-                    {!membersError && (
-                        <TeamMembersManager
-                            key={`${id}-${members.length}`}
-                            teamId={id}
-                            initialMembers={members}
-                            isCoach={isCoach}
-                            isAdmin={isAdmin}
-                        />
-                    )}
-                    {membersError && <ErrorAlert message={membersError} />}
                 </div>
             </div>
         </div>
