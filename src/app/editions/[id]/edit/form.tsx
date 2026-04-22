@@ -105,10 +105,11 @@ export default function EditForm({ edition, editionId }: EditFormProps) {
 
             <Button
                 type="submit"
-                disabled={isLoading}
                 className="mt-2 w-full"
+                loading={isLoading}
+                loadingText="Updating edition..."
             >
-                {isLoading ? 'Updating...' : 'Submit'}
+                Submit
             </Button>
         </form>
     );
