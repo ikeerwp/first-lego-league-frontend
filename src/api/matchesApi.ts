@@ -6,7 +6,8 @@ import { Referee } from "@/types/referee";
 import { Round } from "@/types/round";
 import { Team } from "@/types/team";
 import { ApiError } from "@/types/errors";
-import { createHalResource, fetchHalCollection, fetchHalResource, postHal } from "./halClient";
+import type { HalPage } from "@/types/pagination";
+import { createHalResource, fetchHalCollection, fetchHalPagedCollection, fetchHalResource, postHal } from "./halClient";
 
 export type CreateMatchPayload = {
     startTime: string;
