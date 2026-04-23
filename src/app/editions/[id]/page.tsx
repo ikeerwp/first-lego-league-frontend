@@ -1,11 +1,16 @@
 import { AwardsService } from "@/api/awardApi";
 import { EditionsService } from "@/api/editionApi";
+import { MediaService } from "@/api/mediaApi";
 import ErrorAlert from "@/app/components/error-alert";
 import EmptyState from "@/app/components/empty-state";
+import { MediaItem } from "@/app/components/media-gallery";
+import { MediaSection } from "@/app/components/media-section";
+import { DEMO_MEDIA } from "@/lib/demo-media";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { getEncodedResourceId } from "@/lib/halRoute";
 import { Award } from "@/types/award";
 import { Edition } from "@/types/edition";
+import { MediaContent } from "@/types/mediaContent";
 import { Team } from "@/types/team";
 import { parseErrorMessage, NotFoundError } from "@/types/errors";
 import Link from "next/link";
@@ -93,14 +98,17 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
     const { id } = await props.params;
     const editionsService = new EditionsService(serverAuthProvider);
     const awardsService = new AwardsService(serverAuthProvider);
+    const mediaService = new MediaService(serverAuthProvider);
 
     let currentUser: User | null = null;
     let edition: Edition | null = null;
     let teams: Team[] = [];
     let awards: Award[] = [];
+    let mediaContents: MediaContent[] = [];
     let error: string | null = null;
     let teamsError: string | null = null;
     let awardsError: string | null = null;
+    let mediaError: string | null = null;
 
     try {
         edition = await editionsService.getEditionById(id);
@@ -131,6 +139,13 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
             } catch (e) {
                 console.error("Failed to fetch awards:", e);
                 awardsError = parseErrorMessage(e);
+            }
+
+            try {
+                mediaContents = await mediaService.getMediaByEdition(edition.uri);
+            } catch (e) {
+                console.error("Failed to fetch media:", e);
+                mediaError = parseErrorMessage(e);
             }
         }
     }
@@ -227,6 +242,12 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
                                         description="Awards for this edition have not been published yet."
                                     />
                                 </div>
+                            )}
+
+                            {mediaError && <ErrorAlert message={mediaError} />}
+
+                            {!mediaError && (
+                                <MediaSection mediaContents={(mediaContents as MediaItem[]).length > 0 ? mediaContents as MediaItem[] : DEMO_MEDIA} />
                             )}
                         </>
                     )}
