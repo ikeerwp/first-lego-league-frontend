@@ -1,37 +1,65 @@
 import { VolunteersService } from "@/api/volunteerApi";
-import EmptyState from "@/app/components/empty-state";
-import ErrorAlert from "@/app/components/error-alert";
+import { UsersService } from "@/api/userApi";
 import { serverAuthProvider } from "@/lib/authProvider";
-import { parseErrorMessage } from "@/types/errors";
+import { revalidatePath } from "next/cache";
+import EditVolunteerModal from "./_edit-volunteer-modal";
+import EmptyState from "@/app/components/empty-state";
 import { Volunteer } from "@/types/volunteer";
+
 
 interface Props {
     params: Promise<{ id: string }>;
+    searchParams: Promise<{ edit?: string }>;
 }
 
 export default async function VolunteerDetailPage(props: Readonly<Props>) {
     const { id } = await props.params;
 
-    const service = new VolunteersService(serverAuthProvider);
+    const usersService = new UsersService(serverAuthProvider);
+    const volunteerService = new VolunteersService(serverAuthProvider);
+
+    const currentUser = await usersService.getCurrentUser();
+
+    const userIsAdmin =
+        currentUser?.username === 'admin' ||
+        (currentUser as any)?.id === 'admin' ||
+        (currentUser as any)?.roles?.includes('ADMIN');
 
     let volunteer: Volunteer | null = null;
-    let error: string | null = null;
-
     try {
-        const data = await service.getVolunteers();
+        const data = await volunteerService.getVolunteers();
         const all = [...data.judges, ...data.referees, ...data.floaters];
-
-        const decoded = decodeURIComponent(id);
-
-        volunteer = all.find(v => v.uri === decoded) ?? null;
-
+        volunteer = all.find(v => v.uri === decodeURIComponent(id)) ?? null;
     } catch (e) {
-        console.error(e);
-        error = parseErrorMessage(e);
+        console.error("Error fetching volunteers:", e);
     }
 
-    if (error) return <ErrorAlert message={error} />;
-    if (!volunteer) return <EmptyState title="Not found" description="Volunteer does not exist" />;
+    async function updateVolunteerData(uri: string, data: Partial<Volunteer>) {
+        'use server';
+
+        const authService = new UsersService(serverAuthProvider);
+        const user = await authService.getCurrentUser();
+
+        const isAdmin =
+            user?.username === 'admin' ||
+            (user as any)?.id === 'admin' ||
+            (user as any)?.roles?.includes('ADMIN');
+
+        if (!isAdmin) {
+            return { success: false, error: "Access denied: You are not an administrator" };
+        }
+
+        try {
+            const service = new VolunteersService(serverAuthProvider);
+            await service.updateVolunteer(uri, data);
+            revalidatePath('/volunteers');
+            return { success: true };
+        } catch (e: any) {
+            return { success: false, error: e.message };
+        }
+    }
+
+    if (!volunteer) return <EmptyState title="Not found" />;
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-background">
@@ -56,6 +84,12 @@ export default async function VolunteerDetailPage(props: Readonly<Props>) {
                     )}
 
                 </div>
+                {userIsAdmin && (
+                    <EditVolunteerModal
+                        volunteer={volunteer}
+                        updateAction={updateVolunteerData}
+                    />
+                )}
             </div>
         </div>
     );

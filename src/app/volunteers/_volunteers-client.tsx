@@ -5,18 +5,21 @@ import { Input } from '@/app/components/input';
 import { VolunteerRole } from '@/types/volunteer';
 import { useState } from 'react';
 import Link from 'next/link';
+import { buttonVariants } from '@/app/components/button';
 
 export interface VolunteerItem {
     name?: string;
     emailAddress?: string;
     type?: VolunteerRole;
     uri?: string;
+    expert?: boolean;
 }
 
 interface VolunteersClientProps {
     judges: VolunteerItem[];
     referees: VolunteerItem[];
     floaters: VolunteerItem[];
+    isAdmin: boolean;
 }
 
 interface VolunteerSectionProps {
@@ -24,6 +27,7 @@ interface VolunteerSectionProps {
     typePlural: string;
     volunteers: VolunteerItem[];
     emptyMessage: string;
+    isAdmin: boolean;
 }
 
 function filterByName(volunteers: VolunteerItem[], query: string): VolunteerItem[] {
@@ -37,6 +41,7 @@ function VolunteerSection({
     typePlural,
     volunteers,
     emptyMessage,
+    isAdmin
 }: Readonly<VolunteerSectionProps>) {
     const [query, setQuery] = useState('');
     const filtered = filterByName(volunteers, query);
@@ -60,17 +65,34 @@ function VolunteerSection({
                         const id = v.uri ? encodeURIComponent(v.uri) : '';
 
                         return (
-                            <li key={id} className="list-card pl-7">
-                                <div className="list-kicker">{v.type}</div>
+                            <li key={id} className="list-card pl-7 flex items-center justify-between">
+                                <div>
+                                    <div className="list-kicker">{v.type}</div>
+                                    <div className="flex items-center gap-2">
+                                        <Link href={`/volunteers/${id}`}>
+                                            <span className="list-title font-medium hover:underline cursor-pointer">
+                                                {v.name || 'Unknown'}
+                                            </span>
+                                        </Link>
 
-                                <Link href={`/volunteers/${id}`}>
-                                    <div className="list-title font-medium hover:underline cursor-pointer">
-                                        {v.name || 'Unknown'}
+                                        {v.type === 'Judge' && v.expert && (
+                                            <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-amber-200">
+                                                Expert
+                                            </span>
+                                        )}
                                     </div>
-                                </Link>
 
-                                {v.emailAddress && (
-                                    <div className="list-support">{v.emailAddress}</div>
+                                    {v.emailAddress && (
+                                        <div className="list-support">{v.emailAddress}</div>
+                                    )}
+                                </div>
+
+                                {isAdmin && (
+                                    <Link 
+                                        href={`/volunteers/${id}?edit=true`}
+                                        className={buttonVariants({ variant: "default", size: "sm" })}>
+                                        ✏️ edit
+                                    </Link>
                                 )}
                             </li>
                         );
@@ -85,27 +107,13 @@ export default function VolunteersClient({
     judges,
     referees,
     floaters,
+    isAdmin
 }: Readonly<VolunteersClientProps>) {
     return (
         <div className="space-y-12">
-            <VolunteerSection
-                title="Judges"
-                typePlural="judges"
-                volunteers={judges}
-                emptyMessage="No judges available"
-            />
-            <VolunteerSection
-                title="Referees"
-                typePlural="referees"
-                volunteers={referees}
-                emptyMessage="No referees available"
-            />
-            <VolunteerSection
-                title="Floaters"
-                typePlural="floaters"
-                volunteers={floaters}
-                emptyMessage="No floaters available"
-            />
+            <VolunteerSection title="Judges" typePlural="judges" volunteers={judges} emptyMessage="No judges available" isAdmin={isAdmin} />
+            <VolunteerSection title="Referees" typePlural="referees" volunteers={referees} emptyMessage="No referees available" isAdmin={isAdmin} />
+            <VolunteerSection title="Floaters" typePlural="floaters" volunteers={floaters} emptyMessage="No floaters available" isAdmin={isAdmin} />
         </div>
     );
 }
