@@ -1,11 +1,17 @@
 import { VolunteersService } from "@/api/volunteerApi";
-import { UsersService } from "@/api/userApi"; // O "@/api/usersApi", verifica el nombre de tu archivo
+import { UsersService } from "@/api/userApi";
 import ErrorAlert from "@/app/components/error-alert";
 import PageShell from "@/app/components/page-shell";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { parseErrorMessage } from "@/types/errors";
 import { Volunteer } from "@/types/volunteer";
+import { User } from "@/types/user";
 import VolunteersClient, { VolunteerItem } from "./_volunteers-client";
+
+type AuthenticatedUser = User & {
+    username?: string;
+    roles?: string[];
+};
 
 function toVolunteerItem(v: Volunteer): VolunteerItem {
     return {
@@ -13,14 +19,14 @@ function toVolunteerItem(v: Volunteer): VolunteerItem {
         emailAddress: v.emailAddress,
         type: v.type,
         uri: v.uri,
-        expert: v.expert 
+        expert: v.expert
     };
 }
 
 export default async function VolunteersPage() {
     const service = new VolunteersService(serverAuthProvider);
     const usersService = new UsersService(serverAuthProvider);
-    
+
     let judges: VolunteerItem[] = [];
     let referees: VolunteerItem[] = [];
     let floaters: VolunteerItem[] = [];
@@ -31,12 +37,14 @@ export default async function VolunteersPage() {
         const token = await serverAuthProvider.getAuth();
         
         if (token) {
-            const currentUser = await usersService.getCurrentUser();
+            // 2. Casteo limpio al nuevo tipo
+            const currentUser = await usersService.getCurrentUser() as AuthenticatedUser | null;
             
-            userIsAdmin = 
+            // 3. CERO 'any' AQUÍ (Esto es lo que rompía tu línea 38 y 39)
+            userIsAdmin = Boolean(
                 currentUser?.username === 'admin' || 
-                (currentUser as any)?.id === 'admin' || 
-                (currentUser as any)?.roles?.includes('ADMIN');
+                currentUser?.roles?.includes('ADMIN')
+            );
         }
 
         const data = await service.getVolunteers();
@@ -63,7 +71,7 @@ export default async function VolunteersPage() {
                         judges={judges}
                         referees={referees}
                         floaters={floaters}
-                        isAdmin={userIsAdmin} 
+                        isAdmin={userIsAdmin}
                     />
                 )}
             </div>
