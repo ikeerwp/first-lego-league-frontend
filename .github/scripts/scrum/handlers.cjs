@@ -451,8 +451,9 @@ async function handlePullRequestCommentCreated({ github, context, core }) {
 		const assignees = (iss.assignees.nodes || []).map(a => (a.login || "").toLowerCase());
 		return !assignees.includes(commenterLower);
 	});
+	const commenterIsInstructor = commenterLower === instructorLogin().toLowerCase();
 
-	if (notAssignedTo.length > 0) {
+	if (!commenterIsInstructor && notAssignedTo.length > 0) {
 		await addComment(github, context, [
 			`Hi @${commenter}, you cannot mark this PR as ready because you are not assigned to its linked issues.`,
 			"",

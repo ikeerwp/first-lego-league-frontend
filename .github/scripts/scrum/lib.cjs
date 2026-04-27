@@ -121,6 +121,7 @@ async function fetchTeamBudgetTasks(github, team) {
 				owner,
 				repo,
 				labels: COIN_LABEL,
+				state: "all",
 				per_page: 100,
 				page,
 			});
