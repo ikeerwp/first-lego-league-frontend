@@ -32,7 +32,6 @@ export default function Navbar() {
         { href: "/teams", label: "Teams" },
         { href: "/editions", label: "Editions" },
         { href: "/volunteers", label: "Volunteers" },
-        { href: "/project-rooms", label: "Project Rooms" },
         { href: "/scientific-projects", label: "Scientific Projects" },
         { href: "/matches", label: "Matches" },
         { href: "/administrators", label: "Administrators", roles: ["ROLE_ADMIN"] }

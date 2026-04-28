@@ -59,25 +59,26 @@ export default async function ProjectRoomsPage() {
                                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Room</th>
                                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Managing Judge</th>
                                     <th className="px-5 py-3 text-right font-medium text-muted-foreground">Details</th>
-                                </tr>
+                                 </tr>
                             </thead>
                             <tbody>
                                 {rooms.map((room, index) => {
-                                    const id = room.uri ? getEncodedResourceId(room.uri) : String(index);
+                                    const id = room.uri ? getEncodedResourceId(room.uri) : String(index + 1);
                                     const judgeEmbedded = room.embedded('managedByJudge');
                                     const judge = judgeEmbedded ? mergeHal<Volunteer>(judgeEmbedded) : null;
                                     const judgeName = judge?.name ?? "—";
+                                    const roomNumber = index + 1;
                                     return (
                                         <tr
                                             key={room.uri ?? index}
                                             className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
                                         >
                                             <td className="px-5 py-4 font-semibold text-foreground">
-                                                Room {index + 1}
-                                            </td>
+                                                Room {roomNumber}
+                                             </td>
                                             <td className="px-5 py-4 text-muted-foreground">
                                                 {judgeName}
-                                            </td>
+                                             </td>
                                             <td className="px-5 py-4 text-right">
                                                 <Link
                                                     href={`/project-rooms/${id}`}
@@ -85,7 +86,7 @@ export default async function ProjectRoomsPage() {
                                                 >
                                                     View →
                                                 </Link>
-                                            </td>
+                                             </td>
                                         </tr>
                                     );
                                 })}
