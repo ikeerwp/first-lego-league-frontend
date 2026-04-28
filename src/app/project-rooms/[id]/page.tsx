@@ -38,15 +38,15 @@ export default async function ProjectRoomDetailPage(props: Readonly<ProjectRoomD
     }
 
     const judge = room?.embedded('managedByJudge')
-        ? mergeHal<Volunteer>(room.embedded('managedByJudge')!)
+        ? mergeHal<Volunteer>(room.embedded('managedByJudge'))
         : null;
 
     const panelists = room?.embeddedArray('panelists')
-        ? mergeHalArray<Volunteer>(room.embeddedArray('panelists')!)
+        ? mergeHalArray<Volunteer>(room.embeddedArray('panelists'))
         : [];
 
     const scientificProjects = room?.embeddedArray('scientificProjects')
-        ? mergeHalArray<ScientificProject>(room.embeddedArray('scientificProjects')!)
+        ? mergeHalArray<ScientificProject>(room.embeddedArray('scientificProjects'))
         : [];
 
     return (
