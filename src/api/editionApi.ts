@@ -116,18 +116,18 @@ export class EditionsService {
     }
 
     async updateEditionState(id: string, newState: string): Promise<Edition> {
-    const editionId = encodeURIComponent(id);
+        const editionId = encodeURIComponent(id);
 
-    const resource = await patchHal(
-        `/editions/${editionId}`,
-        { state: newState },
-        this.authStrategy
-    );
+        const resource = await patchHal(
+            `/editions/${editionId}`,
+            { state: newState },
+            this.authStrategy
+        );
 
-    if (!resource) {
-        return { state: newState } as Edition;
-    }
+        if (!resource) {
+            return { state: newState } as Edition;
+        }
 
-    return mergeHal<Edition>(resource);
+        return mergeHal<Edition>(resource);
     }
 }

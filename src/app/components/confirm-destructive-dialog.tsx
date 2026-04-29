@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/app/components/button";
 
 interface ConfirmDestructiveDialogProps {
@@ -22,21 +22,18 @@ export default function ConfirmDestructiveDialog({
     onCancel,
 }: ConfirmDestructiveDialogProps) {
     const [isPending, setIsPending] = useState(false);
-    const dialogRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        dialogRef.current?.focus();
-
         function handleKeyDown(event: KeyboardEvent) {
             if (event.key === "Escape" && !isPending) {
                 onCancel();
             }
         }
 
-        window.addEventListener("keydown", handleKeyDown);
+        globalThis.addEventListener("keydown", handleKeyDown);
 
         return () => {
-            window.removeEventListener("keydown", handleKeyDown);
+            globalThis.removeEventListener("keydown", handleKeyDown);
         };
     }, [isPending, onCancel]);
 
@@ -55,28 +52,19 @@ export default function ConfirmDestructiveDialog({
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6"
-            role="presentation"
             onMouseDown={(event) => {
                 if (event.target === event.currentTarget && !isPending) {
                     onCancel();
                 }
             }}
         >
-            <div
-                ref={dialogRef}
-                tabIndex={-1}
-                role="dialog"
+            <dialog
+                open
                 aria-modal="true"
-                aria-labelledby="confirm-dialog-title"
-                className="w-full max-w-md border border-border bg-card p-6 text-card-foreground shadow-xl outline-none"
+                className="w-full max-w-md border border-border bg-card p-6 text-card-foreground shadow-xl"
             >
                 <div className="space-y-3">
-                    <h2
-                        id="confirm-dialog-title"
-                        className="text-lg font-semibold"
-                    >
-                        {title}
-                    </h2>
+                    <h2 className="text-lg font-semibold">{title}</h2>
 
                     <div className="text-sm leading-6 text-muted-foreground">
                         {description}
@@ -102,7 +90,7 @@ export default function ConfirmDestructiveDialog({
                         {isPending ? pendingLabel : confirmLabel}
                     </Button>
                 </div>
-            </div>
+            </dialog>
         </div>
     );
 }

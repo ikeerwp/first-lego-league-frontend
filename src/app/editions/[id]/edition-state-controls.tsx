@@ -73,10 +73,13 @@ export default function EditionStateControls({
         setError(null);
 
         try {
-            await service.updateEditionState(editionId, nextState);
+            await service.updateEditionState(
+            editionId,
+            nextState
+        );
 
-            setCurrentState(nextState);
-            setIsDialogOpen(false);
+        setCurrentState(nextState);
+        setIsDialogOpen(false);
         } catch (e) {
             setError(e instanceof Error ? e.message : "Failed to update edition state.");
         } finally {
@@ -112,12 +115,12 @@ export default function EditionStateControls({
                     title="Advance edition state"
                     description={
                         <p>
-                            Are you sure you want to change the edition state from{" "}
-                            <span className="font-semibold text-foreground">
+                            Are you sure you want to change the edition state from
+                            <span className="mx-1 font-semibold text-foreground">
                                 {currentState}
-                            </span>{" "}
-                            to{" "}
-                            <span className="font-semibold text-foreground">
+                            </span>
+                            to
+                            <span className="mx-1 font-semibold text-foreground">
                                 {nextState}
                             </span>
                             ?
