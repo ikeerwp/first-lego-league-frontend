@@ -1,6 +1,6 @@
 import type { AuthStrategy } from "@/lib/authProvider";
 import { Edition } from "@/types/edition";
-import type { CompetitionTable } from "@/types/competitionTable";
+import type { EditionCompetitionTable } from "@/types/competitionTableSchedule";
 import { ApiError } from "@/types/errors";
 import type { HalPage } from "@/types/pagination";
 import { Team } from "@/types/team";
@@ -134,7 +134,7 @@ export class EditionsService {
         return mergeHal<Edition>(resource);
     }
 
-    async getEditionCompetitionTables(id: string): Promise<CompetitionTable[]> {
+    async getEditionCompetitionTables(id: string): Promise<EditionCompetitionTable[]> {
         const encodedId = encodeURIComponent(id);
         const url = `${API_BASE_URL}/editions/${encodedId}/tables`;
         const authorization = await this.authStrategy.getAuth();
@@ -151,6 +151,6 @@ export class EditionsService {
             throw new ApiError("Failed to fetch competition tables", res.status, true);
         }
 
-        return res.json() as Promise<CompetitionTable[]>;
+        return res.json() as Promise<EditionCompetitionTable[]>;
     }
 }
