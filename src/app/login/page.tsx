@@ -1,10 +1,10 @@
 "use client";
 
 import { UsersService } from "@/api/userApi";
-import { useAuth } from "@/app/components/authentication";
 import AuthPageShell from "@/app/components/auth-page-shell";
-import ErrorAlert from "@/app/components/error-alert";
+import { useAuth } from "@/app/components/authentication";
 import { Button } from "@/app/components/button";
+import ErrorAlert from "@/app/components/error-alert";
 import { Input } from "@/app/components/input";
 import { Label } from "@/app/components/label";
 import { AUTH_COOKIE_NAME, clientAuthProvider } from "@/lib/authProvider";

@@ -10,11 +10,47 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { deleteCookie } from "cookies-next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+
+function hasAuthCookie(): boolean {
+    if (typeof document === "undefined") return false;
+    return new RegExp(`(?:^|;\\s*)${AUTH_COOKIE_NAME}=([^;]+)`).test(
+        document.cookie
+    );
+}
 
 export default function Loginbar() {
     const router = useRouter();
     const { user, setUser } = useAuth();
+
+    const [loadingUser, setLoadingUser] = useState(true);
+
+    useEffect(() => {
+        let active = true;
+
+        async function load() {
+            if (!hasAuthCookie()) {
+                if (active) setLoadingUser(false);
+                return;
+            }
+
+            try {
+                const service = new UsersService(clientAuthProvider);
+                const currentUser = await service.getCurrentUser();
+                if (active) setUser(currentUser ?? null);
+            } catch {
+                if (active) setUser(null);
+            } finally {
+                if (active) setLoadingUser(false);
+            }
+        }
+
+        load();
+
+        return () => {
+            active = false;
+        };
+    }, [setUser]);
 
     function logout() {
         deleteCookie(AUTH_COOKIE_NAME);
@@ -22,25 +58,6 @@ export default function Loginbar() {
         setUser(null);
         router.push("/");
     }
-
-    useEffect(() => {
-        let mounted = true;
-
-        async function load() {
-            try {
-                const service = new UsersService(clientAuthProvider);
-                const currentUser = await service.getCurrentUser();
-                if (mounted) setUser(currentUser ?? null);
-            } catch {
-                if (mounted) setUser(null);
-            }
-        }
-
-        load();
-        return () => {
-            mounted = false;
-        };
-    }, [setUser]);
 
     if (user) {
         return (
@@ -69,6 +86,21 @@ export default function Loginbar() {
                 >
                     Logout
                 </button>
+            </div>
+        );
+    }
+
+    if (loadingUser) {
+        return (
+            <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-3 border border-border bg-card px-3 py-2">
+                    <Avatar>
+                        <AvatarFallback>
+                            <FontAwesomeIcon icon={faUser} className="h-4 w-4" />
+                        </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm">…</span>
+                </div>
             </div>
         );
     }

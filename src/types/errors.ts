@@ -96,11 +96,35 @@ export class ValidationError extends ApiError {
 }
 
 /**
+ * Error thrown for conflicts, such as duplicate resources (409)
+ */
+export class ConflictError extends ApiError {
+  constructor(
+    message: string = "A conflict occurred. The resource may already exist.",
+    originalError?: unknown
+  ) {
+    super(message, 409, false, originalError);
+    this.name = "ConflictError";
+    Object.setPrototypeOf(this, ConflictError.prototype);
+  }
+}
+
+/**
  * Utility function to parse error responses from API
  */
 export function parseErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
-    return error.message;
+    const msg = error.message;
+
+    // Sanitize raw database exception strings
+    if (msg.includes("duplicate key value violates unique constraint") || msg.includes("ConstraintViolationException")) {
+      return "A record with this information already exists.";
+    }
+    if (msg.includes("could not execute statement") || msg.includes("SQL [insert")) {
+      return "An unexpected database error occurred. Please verify your data and try again.";
+    }
+
+    return msg;
   }
 
   if (error instanceof Error) {

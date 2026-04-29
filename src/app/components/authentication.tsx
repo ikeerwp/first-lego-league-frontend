@@ -9,8 +9,11 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children, }: Readonly<{ children: React.ReactNode; }>) {
+export function AuthProvider({
+    children,
+}: Readonly<{ children: React.ReactNode }>) {
     const [user, setUser] = useState<User | null>(null);
+
     return (
         <AuthContext.Provider value={{ user, setUser }}>
             {children}

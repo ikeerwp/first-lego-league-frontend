@@ -54,16 +54,17 @@ export class EditionsService {
         );
     }
 
+    async getEditionsPaged(page: number, size: number): Promise<HalPage<Edition>> {
+        return fetchHalPagedCollection<Edition>('/editions', this.authStrategy, 'editions', page, size);
+    }
+
     async getEditionById(id: string): Promise<Edition> {
         const editionId = encodeURIComponent(id);
         return fetchHalResource<Edition>(`/editions/${editionId}`, this.authStrategy);
     }
 
     async getEditionByUri(resourceUri: string): Promise<Edition> {
-        return fetchHalResource<Edition>(
-            normalizeResourcePath(resourceUri),
-            this.authStrategy
-        );
+        return fetchHalResource<Edition>(normalizeResourcePath(resourceUri), this.authStrategy);
     }
 
     async getEditionByYear(year: string | number): Promise<Edition | null> {
@@ -71,9 +72,8 @@ export class EditionsService {
         const editions = await fetchHalCollection<Edition>(
             `/editions/search/findByYear?year=${normalizedYear}`,
             this.authStrategy,
-            "editions"
+            'editions'
         );
-
         return editions.length > 0 ? editions[0] : null;
     }
 
@@ -81,7 +81,7 @@ export class EditionsService {
         return fetchHalCollection<Edition>(
             `/editions/search/findByVenueName?venueName=${encodeURIComponent(venueName)}`,
             this.authStrategy,
-            "editions"
+            'editions'
         );
     }
 
@@ -129,5 +129,14 @@ export class EditionsService {
     }
 
     return mergeHal<Edition>(resource);
+    }
+
+    async createEdition(data: CreateEditionPayload): Promise<Edition> {
+        return createHalResource<Edition>("/editions", data, this.authStrategy, "edition");
+    }
+
+    async updateEdition(id: string, data: UpdateEditionPayload): Promise<Edition> {
+        const editionId = encodeURIComponent(id);
+        return updateHalResource<Edition>(`/editions/${editionId}`, data, this.authStrategy, "edition");
     }
 }

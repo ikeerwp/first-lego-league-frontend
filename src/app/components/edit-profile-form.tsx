@@ -10,7 +10,7 @@ import { parseErrorMessage } from "@/types/errors";
 import { CheckCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { SubmitHandler, useForm } from "react-hook-form";
+import { SubmitHandler, useForm, useWatch } from "react-hook-form";
 
 interface EditProfileFormProps {
     readonly userId: string;
@@ -32,20 +32,21 @@ export default function EditProfileForm({ userId, currentEmail }: EditProfileFor
     const {
         register,
         handleSubmit,
-        watch,
+        control,
         reset,
         formState: { errors, isSubmitting },
     } = useForm<FormValues>({
         defaultValues: { email: currentEmail ?? "", password: "", confirmPassword: "" },
     });
 
-    const passwordValue = watch("password");
+    const passwordValue = useWatch({ control, name: "password" });
 
     const onSubmit: SubmitHandler<FormValues> = async (data) => {
         setSuccessMessage(null);
         setErrorMessage(null);
 
-        const payload: Partial<Pick<{ email: string; password: string }, "email" | "password">> = {};
+        const payload: { email?: string; password?: string } = {};
+
         if (data.email && data.email !== currentEmail) {
             payload.email = data.email;
         }
@@ -80,7 +81,6 @@ export default function EditProfileForm({ userId, currentEmail }: EditProfileFor
                 <div
                     className="flex items-center gap-3 rounded-lg border border-green-500/20 bg-green-500/10 px-4 py-3"
                     role="status"
-                    aria-live="polite"
                 >
                     <CheckCircle className="h-5 w-5 shrink-0 text-green-600" aria-hidden="true" />
                     <p className="text-sm font-medium text-green-700 dark:text-green-400">{successMessage}</p>
@@ -100,15 +100,11 @@ export default function EditProfileForm({ userId, currentEmail }: EditProfileFor
                             maxLength: { value: 254, message: "Email must be 254 characters or fewer" },
                             validate: (value) => {
                                 if (!value) return true;
-                                const atIndex = value.indexOf("@");
-                                if (atIndex < 1) return "Invalid email address";
-                                const local = value.slice(0, atIndex);
-                                const domain = value.slice(atIndex + 1);
-                                if (local.length > 64) return "Invalid email address";
-                                if (!domain.includes(".")) return "Invalid email address";
-                                const dotIndex = domain.lastIndexOf(".");
-                                if (dotIndex < 1 || dotIndex === domain.length - 1) return "Invalid email address";
                                 if (/\s/.test(value)) return "Invalid email address";
+                                const parts = value.split("@");
+                                if (parts.length !== 2) return "Invalid email address";
+                                const [local, domain] = parts;
+                                if (!local || !domain?.includes(".")) return "Invalid email address";
                                 return true;
                             },
                         })}
@@ -152,8 +148,13 @@ export default function EditProfileForm({ userId, currentEmail }: EditProfileFor
                     )}
                 </div>
 
-                <Button type="submit" className="mt-2 w-full max-w-xs" disabled={isSubmitting}>
-                    {isSubmitting ? "Saving…" : "Save changes"}
+                <Button
+                    type="submit"
+                    className="mt-2 w-full max-w-xs"
+                    loading={isSubmitting}
+                    loadingText="Saving changes..."
+                >
+                    Save changes
                 </Button>
             </form>
         </div>

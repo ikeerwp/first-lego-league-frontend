@@ -29,7 +29,7 @@ function getAdminTestUser(): BasicAuthCredentials {
     const password = process.env.E2E_ADMIN_PASSWORD;
 
     if (!username || !password) {
-        throw new Error("E2E_ADMIN_USERNAME and E2E_ADMIN_PASSWORD must be set for team creation helpers.");
+        throw new Error("E2E_ADMIN_USERNAME and E2E_ADMIN_PASSWORD must be set for E2E API write helpers.");
     }
 
     return { username, password };
@@ -69,6 +69,30 @@ export async function createUserViaApi(request: APIRequestContext, user: TestUse
             id: user.username,
             email: user.email,
             password: user.password,
+        },
+    });
+
+    expect(response.status(), await response.text()).toBe(201);
+}
+
+export async function createAdministratorViaApi(
+    request: APIRequestContext,
+    admin: TestUser
+) {
+    const baseUrl = getApiBaseUrl();
+    const adminUser = getAdminTestUser();
+    assertSafeWriteTarget(baseUrl);
+
+    const response = await request.post(`${baseUrl}/administrators`, {
+        headers: {
+            Accept: "application/hal+json",
+            "Content-Type": "application/json",
+            Authorization: getBasicAuthHeader(adminUser),
+        },
+        data: {
+            id: admin.username,
+            email: admin.email,
+            password: admin.password,
         },
     });
 

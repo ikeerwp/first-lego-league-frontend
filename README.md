@@ -1,3 +1,17 @@
+ ---
+ ## First Lego League — Scoreboard & Platform                                                                   
+ ### Live Scoreboard: https://dev-scoreboard.firstlegoleague.win
+ 
+ A real-time scoreboard for the First Lego League software architecture competition. It tracks team scores by aggregating completed GitHub issues (weighted by story points) from a GitHub Project board. Features include:
+ 
+ - Live rankings with gold / silver / bronze highlights for the top 3 teams
+ - Hall of Fame showing the weekly top performer and all-time weekly winners
+ - Reserve Issue — log in with GitHub to request an open issue be assigned to you
+ - Dark / light theme toggle with animated galaxy background
+ - Hourly automatic updates via GitHub Actions                                                               
+
+  ---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Available Routes

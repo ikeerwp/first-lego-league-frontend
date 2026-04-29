@@ -21,6 +21,13 @@ const INVALID_STORY_POINTS_LABEL = "invalid-story-points"
 
 const ALL_STORY_POINTS_LABELS = Array.from(STORY_POINTS_LABELS.values());
 
+const COIN_LABEL = "🪙";
+
+const BUDGET_REPOS = [
+	{ owner: "UdL-EPS-SoftArch-Igualada", repo: "first-lego-league-frontend" },
+	{ owner: "UdL-EPS-SoftArch-Igualada", repo: "first-lego-league-backend" },
+];
+
 function requireTeamsFile(core) {
 	if (!fs.existsSync(TEAMS_FILE)) {
 		core.setFailed(
@@ -88,6 +95,123 @@ function extractStoryPointsOrNull(issueBody) {
  */
 function storyPointsLabel(points) {
 	return STORY_POINTS_LABELS.get(points) || null;
+}
+
+/**
+ * @param {string} labelName
+ */
+function getPointsFromLabel(labelName) {
+	for (const [points, label] of STORY_POINTS_LABELS.entries()) {
+		if (label === labelName) return parseFloat(points);
+	}
+	return null;
+}
+
+/**
+ * @param {string[]} team
+ */
+async function fetchTeamBudgetTasks(github, team) {
+	const teamLower = team.map(u => u.toLowerCase());
+	const tasks = [];
+
+	for (const { owner, repo } of BUDGET_REPOS) {
+		let page = 1;
+		while (true) {
+			const { data: issues } = await github.rest.issues.listForRepo({
+				owner,
+				repo,
+				labels: COIN_LABEL,
+				state: "all",
+				per_page: 100,
+				page,
+			});
+			if (issues.length === 0) break;
+			for (const issue of issues) {
+				if (issue.pull_request) continue;
+				if (!teamLower.includes((issue.user?.login || "").toLowerCase())) continue;
+				const spLabel = (issue.labels || []).find(l => ALL_STORY_POINTS_LABELS.includes(l.name));
+				if (!spLabel) continue;
+				const points = getPointsFromLabel(spLabel.name);
+				if (points === null) continue;
+				tasks.push({ number: issue.number, owner, repo, points });
+			}
+			if (issues.length < 100) break;
+			page++;
+		}
+	}
+
+	return tasks;
+}
+
+/**
+ * Finds the optimal combination of available tasks covering requiredBudget.
+ * Minimizes waste (sum - required); breaks ties by highest single-task value.
+ * Returns the selected task objects, or null if total budget is insufficient.
+ *
+ * @param {number} requiredBudget
+ * @param {{ number: number, owner: string, repo: string, points: number }[]} availableTasks
+ */
+function getBudgetTasks(requiredBudget, availableTasks) {
+	const intRequired = Math.round(requiredBudget * 4);
+	if (intRequired === 0) return [];
+
+	const n = availableTasks.length;
+	if (n === 0) return null;
+
+	const taskInts = availableTasks.map(t => Math.round(t.points * 4));
+	const maxSum = taskInts.reduce((s, v) => s + v, 0);
+	if (maxSum < intRequired) return null;
+
+	// 0/1 knapsack: dp[s] = best combination achieving sum exactly s
+	// "best" at a given sum = highest maxTask (tie-breaker per spec)
+	const dp = new Array(maxSum + 1).fill(null);
+	dp[0] = { indices: [], maxTask: 0 };
+
+	for (let i = 0; i < n; i++) {
+		const v = taskInts[i];
+		for (let s = maxSum; s >= v; s--) {
+			if (dp[s - v] === null) continue;
+			const prev = dp[s - v];
+			const newMax = Math.max(prev.maxTask, v);
+			if (dp[s] === null || newMax > dp[s].maxTask) {
+				dp[s] = { indices: [...prev.indices, i], maxTask: newMax };
+			}
+		}
+	}
+
+	// Pick minimum sum >= intRequired; break ties by highest maxTask
+	let bestSum = -1;
+	let bestWaste = Infinity;
+	let bestMaxTask = -1;
+
+	for (let s = intRequired; s <= maxSum; s++) {
+		if (dp[s] === null) continue;
+		const waste = s - intRequired;
+		if (waste < bestWaste || (waste === bestWaste && dp[s].maxTask > bestMaxTask)) {
+			bestWaste = waste;
+			bestMaxTask = dp[s].maxTask;
+			bestSum = s;
+		}
+	}
+
+	if (bestSum === -1) return null;
+	return dp[bestSum].indices.map(i => availableTasks[i]);
+}
+
+/**
+ * Removes a label from an issue in any repo (not just the current context repo).
+ */
+async function removeLabelFromIssue(github, owner, repo, issueNumber, labelName) {
+	try {
+		await github.rest.issues.removeLabel({
+			owner,
+			repo,
+			issue_number: issueNumber,
+			name: labelName,
+		});
+	} catch (e) {
+		console.warn(`Failed to remove label "${labelName}" from ${owner}/${repo}#${issueNumber}:`, e);
+	}
 }
 
 async function addComment(github, context, body) {
@@ -333,6 +457,7 @@ async function listProjectItemsWithStatusAndAssignees(github, projectId) {
 
 module.exports = {
 	IN_PROGRESS_TASKS_LIMIT,
+	COIN_LABEL,
 
 	// teams + story points
 	requireTeamsFile,
@@ -340,6 +465,7 @@ module.exports = {
 	getTeamMembersOrNull,
 	extractStoryPointsOrNull,
 	storyPointsLabel,
+	getPointsFromLabel,
 	ALL_STORY_POINTS_LABELS,
 	INVALID_STORY_POINTS_LABEL,
 
@@ -348,7 +474,12 @@ module.exports = {
 	closeIssue,
 	addLabels,
 	removeLabelSafe,
+	removeLabelFromIssue,
 	hasLabel,
+
+	// budget
+	fetchTeamBudgetTasks,
+	getBudgetTasks,
 
 	// projects v2
 	getSingleRepoProjectV2,

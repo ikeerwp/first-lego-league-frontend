@@ -1,18 +1,20 @@
-import halfred, { Resource } from "halfred";
 import {
     ApiError,
-    NotFoundError,
-    NetworkError,
     AuthenticationError,
+    NetworkError,
+    NotFoundError,
     ServerError,
     ValidationError,
+    ConflictError,
 } from "@/types/errors";
+import type { HalPage } from "@/types/pagination";
+import halfred, { Resource } from "halfred";
 
 const PROD_API_BASE_URL = "https://api.firstlegoleague.win";
 type HalRequestBody = Record<string, unknown> | Resource;
 
 // Env variables starting with NEXT_PUBLIC_ are available to the client.
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || PROD_API_BASE_URL;
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || PROD_API_BASE_URL;
 
 export function mergeHal<T>(obj: Resource): (T & Resource) {
     return Object.assign(obj, halfred.parse(obj)) as T & Resource;
@@ -36,6 +38,34 @@ export async function fetchHalCollection<T>(
     const resource = await getHal(path, authProvider);
     const embedded = resource.embeddedArray(embeddedKey) || [];
     return mergeHalArray<T>(embedded);
+}
+
+/**
+ * Fetches a paginated HAL collection using ?page=N&size=N query parameters.
+ * Inspects _links.next and _links.prev to derive hasNext / hasPrev.
+ *
+ * @param path        - API endpoint path (without query params)
+ * @param authProvider - Authentication strategy
+ * @param embeddedKey - Key for embedded array in HAL response
+ * @param page        - 0-based page index
+ * @param size        - Page size
+ */
+export async function fetchHalPagedCollection<T>(
+    path: string,
+    authProvider: { getAuth: () => Promise<string | null> },
+    embeddedKey: string,
+    page: number,
+    size: number
+): Promise<HalPage<T & Resource>> {
+    const sep = path.includes("?") ? "&" : "?";
+    const resource = await getHal(`${path}${sep}page=${page}&size=${size}`, authProvider);
+    const items = mergeHalArray<T>(resource.embeddedArray(embeddedKey) || []);
+    return {
+        items,
+        hasNext: !!resource.link("next"),
+        hasPrev: !!resource.link("prev"),
+        currentPage: page,
+    };
 }
 
 /**
@@ -177,6 +207,8 @@ async function handleApiError(error: unknown, res?: Response): Promise<never> {
                 throw new AuthenticationError(errorMessage, status, error);
             case 400:
                 throw new ValidationError(errorMessage, error);
+            case 409:
+                throw new ConflictError(errorMessage, error);
             case 500:
             case 502:
             case 503:

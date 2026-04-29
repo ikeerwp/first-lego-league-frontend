@@ -44,6 +44,8 @@
 }
 
 :root {
+  --font-geist-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-geist-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --radius: 0rem;
   --background: #f6f8fc;
   --foreground: #17305d;

@@ -1,44 +1,49 @@
+import { EditionsService } from "@/api/editionApi";
 import { ScientificProjectsService } from "@/api/scientificProjectApi";
-import PageShell from "@/app/components/page-shell";
-import ErrorAlert from "@/app/components/error-alert";
+import { buttonVariants } from "@/app/components/button";
 import EmptyState from "@/app/components/empty-state";
+import ErrorAlert from "@/app/components/error-alert";
+import PageShell from "@/app/components/page-shell";
+import PaginationControls from "@/app/components/pagination-controls";
+import { ScientificProjectCardLink } from "@/app/components/scientific-project-card";
 import { serverAuthProvider } from "@/lib/authProvider";
+import { getEncodedResourceId } from "@/lib/halRoute";
+import { parseErrorMessage } from "@/types/errors";
+import type { HalPage } from "@/types/pagination";
 import { ScientificProject } from "@/types/scientificProject";
 import Link from "next/link";
-import { buttonVariants } from "@/app/components/button";
-import { parseErrorMessage } from "@/types/errors";
 
-function ScientificProjectCard({ project, index }: Readonly<{ project: ScientificProject; index: number }>) {
-    return (
-        <div className="list-card block h-full pl-7">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="min-w-0 space-y-2">
-                    <div className="list-kicker">Scientific Project #{index + 1}</div>
-                    <div className="list-title">
-                        {project.comments ? project.comments : `Project ${index + 1}`}
-                    </div>
-                    {project.score !== undefined && project.score !== null && (
-                        <div className="list-support">Score: {project.score}</div>
-                    )}
-                </div>
-                {project.score !== undefined && project.score !== null && (
-                    <div className="status-badge">{project.score} pts</div>
-                )}
-            </div>
-        </div>
-    );
-}
+type PageSearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-export default async function ScientificProjectsPage() {
+const PAGE_SIZE = 5;
+
+export default async function ScientificProjectsPage({ searchParams }: Readonly<{ searchParams: PageSearchParams }>) {
+    const params = await searchParams;
+    const yearParam = params.year;
+    const year = Array.isArray(yearParam) ? yearParam[0] : yearParam;
+    const yearQuery = year ? `?year=${year}` : "";
+    const urlPage = Math.max(1, Number(params.page ?? "1") || 1);
+
     let projects: ScientificProject[] = [];
+    let result: HalPage<ScientificProject> = { items: [], hasNext: false, hasPrev: false, currentPage: 0 };
     let error: string | null = null;
     const auth = await serverAuthProvider.getAuth();
     const isLoggedIn = !!auth;
 
-
     try {
         const service = new ScientificProjectsService(serverAuthProvider);
-        projects = await service.getScientificProjects();
+
+        if (year) {
+            const editionsService = new EditionsService(serverAuthProvider);
+            const edition = await editionsService.getEditionByYear(year);
+            const editionId = edition?.uri ? getEncodedResourceId(edition.uri) : null;
+            if (editionId) {
+                projects = await service.getScientificProjectsByEdition(editionId);
+            }
+        } else {
+            result = await service.getScientificProjectsPaged(urlPage - 1, PAGE_SIZE);
+            projects = result.items;
+        }
     } catch (e) {
         console.error("Failed to fetch scientific projects:", e);
         error = parseErrorMessage(e);
@@ -50,11 +55,10 @@ export default async function ScientificProjectsPage() {
             title="Scientific Projects"
             description="Explore innovation projects linked to each FIRST LEGO League edition."
             heroAside={isLoggedIn ? (
-                <Link href="/scientific-projects/new" className={buttonVariants({ variant: "default", size: "sm" })}>
+                <Link href={`/scientific-projects/new${yearQuery}`} className={buttonVariants({ variant: "default", size: "sm" })}>
                     New Project
                 </Link>
             ) : undefined}
-
         >
             <div className="space-y-6">
                 <div className="space-y-3">
@@ -75,13 +79,23 @@ export default async function ScientificProjectsPage() {
                 )}
 
                 {!error && projects.length > 0 && (
-                    <ul className="list-grid">
-                        {projects.map((project, index) => (
-                            <li key={project.uri ?? index}>
-                                <ScientificProjectCard project={project} index={index} />
-                            </li>
-                        ))}
-                    </ul>
+                    <>
+                        <ul className="list-grid">
+                            {projects.map((project, index) => (
+                                <li key={project.uri ?? project.link("self")?.href ?? index}>
+                                    <ScientificProjectCardLink project={project} index={index} />
+                                </li>
+                            ))}
+                        </ul>
+                        {!year && (
+                            <PaginationControls
+                                currentPage={urlPage}
+                                hasNext={result.hasNext}
+                                hasPrev={result.hasPrev}
+                                basePath="/scientific-projects"
+                            />
+                        )}
+                    </>
                 )}
             </div>
         </PageShell>

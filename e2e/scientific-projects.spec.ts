@@ -29,6 +29,6 @@ test("authenticated users can open the new scientific project form", async ({ pa
     await expect(page).toHaveURL(/\/scientific-projects\/new$/);
     await expect(page.getByRole("heading", { name: "New Scientific Project", level: 1 })).toBeVisible();
     await expect(page.getByLabel("Project name")).toBeVisible();
-    await expect(page.getByLabel("Edition")).toBeVisible();
+    await expect(page.locator("form").getByLabel("Edition")).toBeVisible();
     await expect(page.getByLabel("Team")).toBeVisible();
 });

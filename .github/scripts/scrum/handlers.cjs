@@ -1,17 +1,22 @@
 const {
 	IN_PROGRESS_TASKS_LIMIT,
+	COIN_LABEL,
 	requireTeamsFile,
 	parseTeams,
 	getTeamMembersOrNull,
 	extractStoryPointsOrNull,
 	storyPointsLabel,
+	getPointsFromLabel,
 	ALL_STORY_POINTS_LABELS,
 	INVALID_STORY_POINTS_LABEL,
 	addComment,
 	closeIssue,
 	addLabels,
 	removeLabelSafe,
+	removeLabelFromIssue,
 	hasLabel,
+	fetchTeamBudgetTasks,
+	getBudgetTasks,
 	getSingleRepoProjectV2,
 	getStatusFieldConfig,
 	findSingleStatusOptionId,
@@ -205,7 +210,7 @@ async function handleInboxUnlabeled({ github, context, core }) {
 
 	await setProjectItemSingleSelect(github, project.id, itemId, status.fieldId, backlogOptionId);
 
-	await addLabels(github, context, ["backlog"]);
+	await addLabels(github, context, ["backlog", COIN_LABEL]);
 
 	await addComment(
 		github,
@@ -398,7 +403,7 @@ async function handlePullRequestCommentCreated({ github, context, core }) {
 	const comment = context.payload.comment;
 	const issue = context.payload.issue;
 
-	const commenter = comment.user?.login || "";
+	let commenter = comment.user?.login || "";
 	if (commenter.toLowerCase().endsWith("[bot]")) return;
 
 	const bodyTrim = (comment.body || "").trim();
@@ -419,6 +424,10 @@ async function handlePullRequestCommentCreated({ github, context, core }) {
 	const labels = pr.labels.map(l => l.name);
 	if (!labels.includes("pr-not-ready")) return;
 
+	if (commenter.toLowerCase() === instructorLogin().toLowerCase()) {
+		commenter = pr.user.login;
+	}
+
 	// Get closing issues
 	const q = `
 		query($owner:String!, $repo:String!, $prNumber:Int!) {
@@ -429,6 +438,7 @@ async function handlePullRequestCommentCreated({ github, context, core }) {
 						nodes {
 							id
 							number
+							labels(first: 20) { nodes { name } }
 							assignees(first: 50) { nodes { login } }
 						}
 					}
@@ -452,6 +462,42 @@ async function handlePullRequestCommentCreated({ github, context, core }) {
 			"",
 			"Not assigned to: " + notAssignedTo.map(i => `#${i.number}`).join(", "),
 			`If you think this is a mistake, please ping ${pingInstructor()}.`,
+		].join("\n"));
+		return;
+	}
+
+	const txt = requireTeamsFile(core);
+	if (!txt) return;
+	const idx = parseTeams(txt);
+	const team = getTeamMembersOrNull(idx, commenter);
+
+	if (!team) {
+		await addComment(github, context, [
+			`Hi @${commenter}, I could not find your GitHub user in any team.`,
+			"",
+			`Please make sure you are logged in with the correct GitHub account. If you believe this is an error, please ping ${pingInstructor()}.`,
+		].join("\n"));
+		return;
+	}
+
+	// Compute required budget from linked issues' story point labels
+	const requiredBudget = issues.reduce((sum, iss) => {
+		const spLabel = (iss.labels?.nodes || []).find(l => ALL_STORY_POINTS_LABELS.includes(l.name));
+		return sum + (spLabel ? (getPointsFromLabel(spLabel.name) ?? 0) : 0);
+	}, 0);
+
+	// Check team budget and find optimal set of tasks to consume
+	const availableTasks = await fetchTeamBudgetTasks(github, team);
+	const totalBudget = availableTasks.reduce((s, t) => s + t.points, 0);
+	const optimalTasks = getBudgetTasks(requiredBudget, availableTasks);
+
+	if (optimalTasks === null) {
+		await addComment(github, context, [
+			`Hi @${commenter}, you cannot mark this PR as ready because your team doesn't have enough budget.`,
+			"",
+			`Your team has a budget of **${totalBudget} story point${totalBudget !== 1 ? "s" : ""}** available (🪙 tasks), but this PR requires **${requiredBudget} story point${requiredBudget !== 1 ? "s" : ""}**.`,
+			"",
+			"Please create new issues to increase your team's budget, then comment `ready` again.",
 		].join("\n"));
 		return;
 	}
@@ -486,7 +532,20 @@ async function handlePullRequestCommentCreated({ github, context, core }) {
 		await setProjectItemSingleSelect(github, project.id, itemId, status.fieldId, inReviewId);
 	}
 
-	await addComment(github, context, "This PR is now marked as **ready to be merged**.");
+	for (const task of optimalTasks) {
+		await removeLabelFromIssue(github, task.owner, task.repo, task.number, COIN_LABEL);
+	}
+
+	const consumedBudget = optimalTasks.reduce((s, t) => s + t.points, 0);
+	const consumedLinks = optimalTasks
+		.map(t => `[${t.repo}#${t.number}](https://github.com/${t.owner}/${t.repo}/issues/${t.number})`)
+		.join(", ");
+
+	await addComment(github, context,
+		optimalTasks.length > 0
+			? `This PR is now marked as **ready to be merged**.\n\nConsumed ${consumedBudget} 🪙 from: ${consumedLinks}.`
+			: "This PR is now marked as **ready to be merged**."
+	);
 }
 
 module.exports = {

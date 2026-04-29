@@ -1,12 +1,29 @@
 "use client";
 
 import { useAuth } from "@/app/components/authentication";
+import EditionSelector from "@/app/components/edition-selector";
 import Loginbar from "@/app/components/loginbar";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+
+function toggleTheme() {
+    const html = document.documentElement;
+
+    if (html.classList.contains("dark")) {
+        html.classList.remove("dark");
+        localStorage.setItem("theme", "light");
+        return;
+    }
+
+    html.classList.add("dark");
+    localStorage.setItem("theme", "dark");
+}
 
 export default function Navbar() {
     const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const currentYear = searchParams.get("year");
     const { user } = useAuth();
 
     const navLinks = [
@@ -14,8 +31,13 @@ export default function Navbar() {
         { href: "/users", label: "Users", roles: ["ROLE_USER"] },
         { href: "/teams", label: "Teams" },
         { href: "/editions", label: "Editions" },
-        { href: "/scientific-projects", label: "Scientific Projects" }
+        { href: "/volunteers", label: "Volunteers" },
+        { href: "/scientific-projects", label: "Scientific Projects" },
+        { href: "/matches", label: "Matches" },
+        { href: "/administrators", label: "Administrators", roles: ["ROLE_ADMIN"] }
     ];
+
+
 
     return (
         <nav className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur-sm">
@@ -41,10 +63,13 @@ export default function Navbar() {
                             const active = href === "/"
                                 ? pathname === "/"
                                 : pathname === href || pathname.startsWith(`${href}/`);
+                            const hrefWithYear = currentYear
+                                    ? `${href}?year=${encodeURIComponent(currentYear)}`
+                                    : href;
                             return (
                                 <Link
                                     key={href}
-                                    href={href}
+                                    href={hrefWithYear}
                                     className={
                                         active
                                             ? "border-b-2 border-accent px-4 py-2 text-sm font-medium text-accent"
@@ -57,8 +82,21 @@ export default function Navbar() {
                         })}
                 </div>
 
-                <div className="order-2 lg:order-3">
+                <div className="order-2 flex items-center gap-3 lg:order-3">
+                    <Suspense fallback={null}>
+                        <EditionSelector />
+                    </Suspense>
                     <Loginbar />
+                    <button
+                        type="button"
+                        onClick={toggleTheme}
+                        aria-label="Toggle dark mode"
+                        className="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground cursor-pointer"
+                    >
+                        <span className="dark:hidden">🌙</span>
+                        <span className="hidden dark:inline">☀️</span>
+                    </button>
+
                 </div>
             </div>
         </nav>

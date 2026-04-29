@@ -1,7 +1,8 @@
-import { EditionsService } from "@/api/editionApi";
+import ErrorAlert from "@/app/components/error-alert";
 import PageShell from "@/app/components/page-shell";
 import { serverAuthProvider } from "@/lib/authProvider";
-import { getEncodedResourceId } from "@/lib/halRoute";
+import { fetchEditionFormData, EditionFormData } from "@/app/scientific-projects/_fetch-edition-data";
+import { parseErrorMessage } from "@/types/errors";
 import { redirect } from "next/navigation";
 import NewScientificProjectForm from "./form";
 
@@ -9,28 +10,13 @@ export default async function NewScientificProjectPage() {
     const auth = await serverAuthProvider.getAuth();
     if (!auth) redirect("/login");
 
-    const editions = await new EditionsService(serverAuthProvider).getEditions().catch(() => []);
-
-    const editionOptions = editions.map(e => ({
-        label: `${e.year}${e.venueName ? ` — ${e.venueName}` : ""}`,
-        value: e.link("self")?.href ?? "",
-    }));
-
-    const teamsPerEditionEntries = await Promise.all(
-        editions.map(async (e) => {
-            const editionHref = e.link("self")?.href ?? "";
-            const editionId = getEncodedResourceId(editionHref) ?? "";
-            const teams = await new EditionsService(serverAuthProvider)
-                .getEditionTeams(editionId)
-                .catch(() => []);
-            return [editionHref, teams.map(t => ({
-                label: t.id ?? "",
-                value: t.link("self")?.href ?? "",
-            }))] as const;
-        })
-    );
-
-    const teamsPerEdition = Object.fromEntries(teamsPerEditionEntries);
+    let editionData: EditionFormData | null = null;
+    let error: string | null = null;
+    try {
+        editionData = await fetchEditionFormData(serverAuthProvider);
+    } catch (e) {
+        error = parseErrorMessage(e);
+    }
 
     return (
         <PageShell
@@ -38,10 +24,13 @@ export default async function NewScientificProjectPage() {
             title="New Scientific Project"
             description="Submit a new scientific project for a FIRST LEGO League edition."
         >
-            <NewScientificProjectForm
-                editionOptions={editionOptions}
-                teamsPerEdition={teamsPerEdition}
-            />
+            {error && <ErrorAlert message={error} />}
+            {editionData && !error && (
+                <NewScientificProjectForm
+                    editionOptions={editionData.editionOptions}
+                    teamsPerEdition={editionData.teamsPerEdition}
+                />
+            )}
         </PageShell>
     );
 }

@@ -9,9 +9,9 @@ export default function Home() {
       description: "Participating teams and details.",
     },
     {
-      href: "/editions",
-      title: "Editions",
-      description: "Competition seasons and venues.",
+      href: "/matches",
+      title: "Matches",
+      description: "Scheduled competitions and results.",
     },
     {
       href: "/scientific-projects",

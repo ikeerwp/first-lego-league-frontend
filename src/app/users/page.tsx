@@ -2,22 +2,37 @@ import { UsersService } from "@/api/userApi";
 import PageShell from "@/app/components/page-shell";
 import ErrorAlert from "@/app/components/error-alert";
 import EmptyState from "@/app/components/empty-state";
+import PaginationControls from "@/app/components/pagination-controls";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { User } from "@/types/user";
 import { parseErrorMessage } from "@/types/errors";
+import type { HalPage } from "@/types/pagination";
 import Link from "next/link";
 
-export default async function UsersPage() {
+export const dynamic = "force-dynamic";
+
+const PAGE_SIZE = 5;
+
+interface UsersPageProps {
+    readonly searchParams?: Promise<{ page?: string }>;
+}
+
+export default async function UsersPage(props: Readonly<UsersPageProps>) {
+    const searchParams = (await props.searchParams) ?? {};
+    const urlPage = Math.max(1, Number(searchParams.page ?? "1") || 1);
+
     const service = new UsersService(serverAuthProvider);
-    let users: User[] = [];
+    let result: HalPage<User> = { items: [], hasNext: false, hasPrev: false, currentPage: 0 };
     let error: string | null = null;
 
     try {
-        users = await service.getUsers();
+        result = await service.getUsersPaged(urlPage - 1, PAGE_SIZE);
     } catch (e) {
         console.error("Failed to fetch users:", e);
         error = parseErrorMessage(e);
     }
+
+    const users = result.items;
 
     return (
         <PageShell
@@ -44,22 +59,30 @@ export default async function UsersPage() {
                 )}
 
                 {!error && users.length > 0 && (
-                    <ul className="list-grid">
-                        {users.map((user) => (
-                            <li key={user.username} className="list-card pl-7">
-                                <div className="list-kicker">User</div>
-                                <Link
-                                    className="list-title block hover:text-primary"
-                                    href={`/users/${user.username}`}
-                                >
-                                    {user.username}
-                                </Link>
-                                {user.email && (
-                                    <div className="list-support">{user.email}</div>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
+                    <>
+                        <ul className="list-grid">
+                            {users.map((user) => (
+                                <li key={user.username} className="list-card pl-7">
+                                    <div className="list-kicker">User</div>
+                                    <Link
+                                        className="list-title block hover:text-primary"
+                                        href={`/users/${user.username}`}
+                                    >
+                                        {user.username}
+                                    </Link>
+                                    {user.email && (
+                                        <div className="list-support">{user.email}</div>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                        <PaginationControls
+                            currentPage={urlPage}
+                            hasNext={result.hasNext}
+                            hasPrev={result.hasPrev}
+                            basePath="/users"
+                        />
+                    </>
                 )}
             </div>
         </PageShell>

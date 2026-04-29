@@ -1,0 +1,27 @@
+import { MediaItem } from "@/app/components/media-gallery";
+
+export const DEMO_MEDIA: MediaItem[] = [
+    { id: "yt1", type: "video/youtube", url: "https://www.youtube.com/watch?v=z-UYk2LkyEE" },
+    { id: "img1", type: "image/jpeg", url: "https://assets.education.lego.com/v3/assets/blt293eea581807678a/blt6d6fe8ac21d5a573/6960c2123aee400008837fb6/FLL_Lifestyle_Students_collaborating_3000x2000.png?locale=es-es&auto=webp&format=jpeg&width=1800&quality=90&fit=bounds" },
+    { id: "yt2", type: "video/youtube", url: "https://www.youtube.com/watch?v=vT5Lb69G-fY" },
+    { id: "img2", type: "image/jpeg", url: "https://blogs.upm.es/fllmadridupm/wp-content/uploads/sites/376/2023/02/52704488883_b88fc9bd9f_o-scaled.jpg" },
+    { id: "img3", type: "image/jpeg", url: "https://news.ual.es/wp-content/uploads/2025/02/FOTO-1-FEBRERO-22-2025-FIRST-LEGO-LEAGUE-scaled-1.jpg" },
+    { id: "yt3", type: "video/youtube", url: "https://www.youtube.com/watch?v=i976Lo1yCxU" },
+    { id: "img4", type: "image/jpeg", url: "https://www.first-lego-league.org/assets/images/f/FLL_C_Robi_Detail_Girl_BG-ddda704b.jpg" },
+    { id: "img5", type: "image/jpeg", url: "https://firstlegoleague.soy/wp-content/uploads/2024/06/2S6B3678-scaled.jpg" },
+    { id: "yt4", type: "video/youtube", url: "https://www.youtube.com/watch?v=CnF62zZbK9c" },
+    { id: "img6", type: "image/jpeg", url: "https://www.fomento.edu/lasacacias/wp-content/uploads/sites/5/2026/03/DESTACADA-ACACIAS.jpg" },
+    { id: "img7", type: "image/jpeg", url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQkC16S4HtsXAmIq_y2hO5WL0I-gu1IsZjwxA&s" },
+    { id: "img8", type: "image/jpeg", url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS2TTlGDc8-Cy7iNF1iq_8ZDwhpvlaPgYv7Ww&s" },
+    { id: "yt5", type: "video/youtube", url: "https://www.youtube.com/watch?v=poAqiS2NaJc" },
+    { id: "img9", type: "image/jpeg", url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTlAx2FYPwcoYhjzUjw16bbSaWrxHvuqtg5Tg&s" },
+    { id: "img10", type: "image/jpeg", url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQNlJ4RD4oEvS1196uHMzq8FVXuLp4gMV9SPg&s" },
+    { id: "img11", type: "image/jpeg", url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7le9x-I6PnPaiN23FwwDHXrmGcEm_k8fE4w&s" },
+    { id: "img12", type: "image/jpeg", url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQXAQ96z6kSzS4mTfigC8HD9vsbJ8iouhAEpw&s" },
+    { id: "img13", type: "image/jpeg", url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQFn1JORY8zeXh50YbDN0mYcx7gCqlVzSUqgw&s" },
+    { id: "img14", type: "image/jpeg", url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSfDCAyRZ6eXcgWU9GPokJfuqfhsineIDryFA&s" },
+    { id: "img15", type: "image/jpeg", url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRAnOSPVKg-mLN4wZC7oOoTGzDzemDo0CCrFA&s" },
+    { id: "img16", type: "image/jpeg", url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSikb2wYhHrEWSkBDsKmMILQizMQ6fwh8n7ZA&s" },
+    { id: "img17", type: "image/jpeg", url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTC4_bRcROYgSriX5HpfLPYhrN6o5aIVoeuPA&s" },
+    { id: "img18", type: "image/jpeg", url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQoNGw_ware-ptPJ-VwadLFDVmDcfQZSeom6g&s" },
+];

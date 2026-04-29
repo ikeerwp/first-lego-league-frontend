@@ -7,6 +7,12 @@ import { ScientificProject } from "@/types/scientificProject";
 export async function createScientificProject(
     data: Pick<ScientificProject, "comments" | "team" | "edition">
 ) {
-    const service = new ScientificProjectsService(serverAuthProvider);
-    await service.createScientificProject(data as ScientificProject);
+    try {
+        const service = new ScientificProjectsService(serverAuthProvider);
+        await service.createScientificProject(data as ScientificProject);
+        return { success: true };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "Error creating the scientific project";
+        return { success: false, error: message };
+    }
 }
