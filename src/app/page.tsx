@@ -17,6 +17,11 @@ export default function Home() {
       href: "/scientific-projects",
       title: "Scientific Projects",
       description: "Innovation projects by edition.",
+    },
+    {
+      href: "/project-rooms",
+      title: "Project Rooms",
+      description: "Judging rooms, panels and assigned projects.",
     }
   ];
 
