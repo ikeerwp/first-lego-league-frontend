@@ -1,6 +1,7 @@
 import { EditionsService } from "@/api/editionApi";
 import ErrorAlert from "@/app/components/error-alert";
 import EmptyState from "@/app/components/empty-state";
+import EditionStateControls from "./edition-state-controls";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { getEncodedResourceId } from "@/lib/halRoute";
 import { Edition } from "@/types/edition";
@@ -27,7 +28,7 @@ function getEditionTitle(edition: Edition | null, id: string) {
 
 export default async function EditionDetailPage(props: Readonly<EditionDetailPageProps>) {
     const { id } = await props.params;
-    const service = new EditionsService(serverAuthProvider);
+    const editionsService = new EditionsService(serverAuthProvider);
 
     let edition: Edition | null = null;
     let teams: Team[] = [];
@@ -35,17 +36,17 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
     let teamsError: string | null = null;
 
     try {
-        edition = await service.getEditionById(id);
+        edition = await editionsService.getEditionById(id);
     } catch (e) {
         console.error("Failed to fetch edition:", e);
-        error = e instanceof NotFoundError 
-            ? "This edition does not exist." 
+        error = e instanceof NotFoundError
+            ? "This edition does not exist."
             : parseErrorMessage(e);
     }
 
     if (edition && !error) {
         try {
-            teams = await service.getEditionTeams(id);
+            teams = await editionsService.getEditionTeams(id);
         } catch (e) {
             console.error("Failed to fetch teams:", e);
             teamsError = parseErrorMessage(e);
@@ -56,12 +57,26 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
         <div className="flex min-h-screen items-center justify-center bg-zinc-50">
             <div className="w-full max-w-3xl px-4 py-10">
                 <div className="w-full rounded-lg border bg-white p-6 shadow-sm dark:bg-black">
-                    <h1 className="mb-2 text-2xl font-semibold">{getEditionTitle(edition, id)}</h1>
+                    <h1 className="mb-2 text-2xl font-semibold">
+                        {getEditionTitle(edition, id)}
+                    </h1>
+
+                    {edition && (
+                        <EditionStateControls
+                            editionId={id}
+                            state={edition.state}
+                            isAdmin={false}
+                        />
+                    )}
+
                     {edition?.venueName ? (
                         <p className="text-sm text-zinc-600">{edition.venueName}</p>
                     ) : null}
+
                     {edition?.description ? (
-                        <p className="mt-2 text-sm text-zinc-600">{edition.description}</p>
+                        <p className="mt-2 text-sm text-zinc-600">
+                            {edition.description}
+                        </p>
                     ) : null}
 
                     {error && (
@@ -72,11 +87,11 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
 
                     {!error && (
                         <>
-                            <h2 className="mt-8 mb-4 text-xl font-semibold">Participating Teams</h2>
+                            <h2 className="mt-8 mb-4 text-xl font-semibold">
+                                Participating Teams
+                            </h2>
 
-                            {teamsError && (
-                                <ErrorAlert message={teamsError} />
-                            )}
+                            {teamsError && <ErrorAlert message={teamsError} />}
 
                             {!teamsError && teams.length === 0 && (
                                 <EmptyState
