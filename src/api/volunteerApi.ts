@@ -1,7 +1,6 @@
 import type { AuthStrategy } from "@/lib/authProvider";
 import { Volunteer } from "@/types/volunteer";
-import { fetchHalCollection } from "./halClient";
-
+import { fetchHalCollection, deleteHal } from "./halClient";
 export class VolunteersService {
     constructor(private readonly authStrategy: AuthStrategy) {}
 
@@ -13,9 +12,13 @@ export class VolunteersService {
         ]);
 
         return {
-            judges: judges.map(j => ({ ...j, type: 'Judge' as const })),
-            referees: referees.map(r => ({ ...r, type: 'Referee' as const })),
-            floaters: floaters.map(f => ({ ...f, type: 'Floater' as const }))
+            judges: judges.map(j => ({ ...j, type: 'Judge' as const, uri: j.link('self')?.href })),
+            referees: referees.map(r => ({ ...r, type: 'Referee' as const, uri: r.link('self')?.href })),
+            floaters: floaters.map(f => ({ ...f, type: 'Floater' as const, uri: f.link('self')?.href }))
         };
+    }
+
+    async deleteVolunteer(uri: string): Promise<void> {
+        await deleteHal(uri, this.authStrategy);
     }
 }

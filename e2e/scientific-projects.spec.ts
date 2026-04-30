@@ -15,6 +15,21 @@ test("scientific projects page renders published content or the empty state", as
     await expect(emptyState.or(projectCards.first())).toBeVisible();
 });
 
+test("scientific projects can be searched by team name from the URL", async ({ page }) => {
+    const teamName = `no-project-team-${Date.now()}`;
+
+    await page.goto("/scientific-projects?year=2099");
+    await page.getByRole("searchbox", { name: "Search scientific projects by team name" }).fill(teamName);
+    await page.getByRole("button", { name: "Search" }).click();
+
+    await expect(page).toHaveURL(new RegExp(`/scientific-projects\\?year=2099&teamName=${teamName}$`));
+    await expect(page.getByText(`No scientific projects match "${teamName}".`)).toBeVisible();
+
+    await page.getByRole("button", { name: "Clear" }).click();
+
+    await expect(page).toHaveURL(/\/scientific-projects\?year=2099$/);
+});
+
 test("authenticated users can open the new scientific project form", async ({ page, request }) => {
     const user = createTestUser("scientific-project");
 
