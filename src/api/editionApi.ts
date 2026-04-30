@@ -3,7 +3,9 @@ import { Edition } from "@/types/edition";
 import type { HalPage } from "@/types/pagination";
 import { Team } from "@/types/team";
 
-import { createHalResource, fetchHalCollection, fetchHalPagedCollection, fetchHalResource, updateHalResource } from "./halClient";
+import { API_BASE_URL, createHalResource, fetchHalCollection, fetchHalPagedCollection, fetchHalResource, updateHalResource } from "./halClient";
+import type { EditionCompetitionTable } from "@/types/competitionTableSchedule";
+import { ApiError } from "@/types/errors";
 
 export type CreateEditionPayload = {
     year: number;
@@ -80,5 +82,22 @@ export class EditionsService {
     async updateEdition(id: string, data: UpdateEditionPayload): Promise<Edition> {
         const editionId = encodeURIComponent(id);
         return updateHalResource<Edition>(`/editions/${editionId}`, data, this.authStrategy, "edition");
+    }
+
+    async getEditionCompetitionTables(id: string): Promise<EditionCompetitionTable[]> {
+        const encodedId = encodeURIComponent(id);
+        const url = `${API_BASE_URL}/editions/${encodedId}/tables`;
+        const authorization = await this.authStrategy.getAuth();
+        const res = await fetch(url, {
+            headers: {
+                Accept: "application/json",
+                ...(authorization ? { Authorization: authorization } : {}),
+            },
+            cache: "no-store",
+        });
+        if (!res.ok) {
+            throw new ApiError(`Failed to fetch competition tables`, res.status, true);
+        }
+        return res.json() as Promise<EditionCompetitionTable[]>;
     }
 }

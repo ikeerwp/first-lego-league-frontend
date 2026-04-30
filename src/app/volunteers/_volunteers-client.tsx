@@ -2,9 +2,12 @@
 
 import EmptyState from '@/app/components/empty-state';
 import { Input } from '@/app/components/input';
+import { Button } from '@/app/components/button';
 import { VolunteerRole } from '@/types/volunteer';
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { DeleteVolunteerDialog } from './delete-volunteer-dialog';
 
 export interface VolunteerItem {
     name?: string;
@@ -17,6 +20,7 @@ interface VolunteersClientProps {
     judges: VolunteerItem[];
     referees: VolunteerItem[];
     floaters: VolunteerItem[];
+    isAdmin: boolean;
 }
 
 interface VolunteerSectionProps {
@@ -24,6 +28,8 @@ interface VolunteerSectionProps {
     typePlural: string;
     volunteers: VolunteerItem[];
     emptyMessage: string;
+    isAdmin: boolean;
+    onDeleteRequest: (volunteer: { name: string; uri: string }) => void;
 }
 
 function filterByName(volunteers: VolunteerItem[], query: string): VolunteerItem[] {
@@ -37,6 +43,8 @@ function VolunteerSection({
     typePlural,
     volunteers,
     emptyMessage,
+    isAdmin,
+    onDeleteRequest,
 }: Readonly<VolunteerSectionProps>) {
     const [query, setQuery] = useState('');
     const filtered = filterByName(volunteers, query);
@@ -56,21 +64,33 @@ function VolunteerSection({
                 <EmptyState title={`No ${typePlural}`} description={emptyMessage} />
             ) : (
                 <ul className="list-grid">
-                    {filtered.map((v) => {
-                        const id = v.uri ? encodeURIComponent(v.uri) : '';
+                    {filtered.map((v, idx) => {
+                        const id = v.uri ? encodeURIComponent(v.uri) : `unknown-${idx}`;
 
                         return (
-                            <li key={id} className="list-card pl-7">
-                                <div className="list-kicker">{v.type}</div>
+                            <li key={id} className="list-card pl-7 flex justify-between items-start">
+                                <div>
+                                    <div className="list-kicker">{v.type}</div>
 
-                                <Link href={`/volunteers/${id}`}>
-                                    <div className="list-title font-medium hover:underline cursor-pointer">
-                                        {v.name || 'Unknown'}
-                                    </div>
-                                </Link>
+                                    <Link href={`/volunteers/${id}`}>
+                                        <div className="list-title font-medium hover:underline cursor-pointer">
+                                            {v.name || 'Unknown'}
+                                        </div>
+                                    </Link>
 
-                                {v.emailAddress && (
-                                    <div className="list-support">{v.emailAddress}</div>
+                                    {v.emailAddress && (
+                                        <div className="list-support">{v.emailAddress}</div>
+                                    )}
+                                </div>
+
+                                {isAdmin && v.uri && (
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={() => onDeleteRequest({ name: v.name || "Unknown", uri: v.uri! })}
+                                    >
+                                        Delete
+                                    </Button>
                                 )}
                             </li>
                         );
@@ -85,7 +105,11 @@ export default function VolunteersClient({
     judges,
     referees,
     floaters,
+    isAdmin,
 }: Readonly<VolunteersClientProps>) {
+    const [selected, setSelected] = useState<{ name: string; uri: string } | null>(null);
+    const router = useRouter();
+
     return (
         <div className="space-y-12">
             <VolunteerSection
@@ -93,19 +117,36 @@ export default function VolunteersClient({
                 typePlural="judges"
                 volunteers={judges}
                 emptyMessage="No judges available"
+                isAdmin={isAdmin}
+                onDeleteRequest={setSelected}
             />
             <VolunteerSection
                 title="Referees"
                 typePlural="referees"
                 volunteers={referees}
                 emptyMessage="No referees available"
+                isAdmin={isAdmin}
+                onDeleteRequest={setSelected}
             />
             <VolunteerSection
                 title="Floaters"
                 typePlural="floaters"
                 volunteers={floaters}
                 emptyMessage="No floaters available"
+                isAdmin={isAdmin}
+                onDeleteRequest={setSelected}
             />
+
+            {selected && (
+                <DeleteVolunteerDialog
+                    volunteer={selected}
+                    onCancel={() => setSelected(null)}
+                    onSuccess={() => {
+                        setSelected(null);
+                        router.refresh();
+                    }}
+                />
+            )}
         </div>
     );
 }

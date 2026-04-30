@@ -106,14 +106,6 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
                 coach.emailAddress?.trim().toLowerCase() === currentUserEmail
         );
 
-    // ✅ múltiples coaches
-    const coachName =
-        coaches.length > 0
-            ? coaches
-                  .map(c => c.name ?? c.emailAddress ?? "Unnamed coach")
-                  .join(", ")
-            : "No coach assigned";
-
     const initialMembers = members.map(toTeamMemberSnapshot);
 
     const membersKey = initialMembers
@@ -129,11 +121,47 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
                         {teamDisplayName ?? "Unnamed team"}
                     </h1>
 
-                    <div className="mb-6 space-y-1 text-sm text-muted-foreground">
+                    <div className="mb-6 space-y-2 text-sm text-muted-foreground">
                         {team.city && (
                             <p><strong>City:</strong> {team.city}</p>
                         )}
-                        <p><strong>Coach:</strong> {coachName}</p>
+
+                        <div>
+                            <strong>Coaches:</strong>
+
+                            {coaches.length === 0 ? (
+                                <p className="mt-1 text-muted-foreground">
+                                    No coaches assigned
+                                </p>
+                            ) : (
+                                <div className="mt-2 space-y-2">
+                                    {coaches.map((coach, index) => (
+                                        <div
+                                            key={coach.uri ?? coach.id ?? index}
+                                            className="rounded-md border border-border p-3"
+                                        >
+                                            <p className="font-medium text-foreground">
+                                                {coach.name ?? "Unnamed coach"}
+                                            </p>
+
+                                            <div className="text-xs text-muted-foreground space-y-1">
+                                                {coach.emailAddress && (
+                                                    <p>Email: {coach.emailAddress}</p>
+                                                )}
+
+                                                {coach.phoneNumber && (
+                                                    <p>Phone: {coach.phoneNumber}</p>
+                                                )}
+
+                                                {!coach.emailAddress && !coach.phoneNumber && (
+                                                    <p>No contact information available</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {isAdmin && (

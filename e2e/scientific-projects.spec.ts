@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ScientificProjectsService } from "../src/api/scientificProjectApi";
-import { loginViaUi } from "./utils/auth";
 import { createUserViaApi } from "./utils/api";
+import { loginViaUi } from "./utils/auth";
 import { createTestUser } from "./utils/test-data";
 
 test("scientific projects page renders published content or the empty state", async ({ page }) => {
