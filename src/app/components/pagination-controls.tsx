@@ -9,6 +9,7 @@ interface PaginationControlsProps {
     readonly basePath: string;
     readonly variant?: "default" | "editorial";
     readonly contextLabel?: string;
+    readonly searchQuery?: string;
 }
 
 export default function PaginationControls({
@@ -16,13 +17,19 @@ export default function PaginationControls({
     hasNext,
     hasPrev,
     basePath,
-    variant = "default",
+    variant,
     contextLabel,
+    searchQuery,
 }: PaginationControlsProps) {
     if (!hasNext && !hasPrev) return null;
 
-    const prevHref = `${basePath}?page=${currentPage - 1}`;
-    const nextHref = `${basePath}?page=${currentPage + 1}`;
+    function buildHref(page: number) {
+        const params = new URLSearchParams();
+        if (searchQuery) params.set('search', searchQuery);
+        params.set('page', String(page));
+        return `${basePath}?${params.toString()}`;
+    }
+
     const disabledClass = "pointer-events-none opacity-40";
     const buttonClassName = cn(
         buttonVariants({ variant: "secondary", size: "sm" }),
@@ -34,7 +41,7 @@ export default function PaginationControls({
             <nav className="pagination-controls--editorial" aria-label="Pagination">
                 <div className="pagination-controls__edge">
                     {hasPrev ? (
-                        <Link href={prevHref} className={buttonClassName}>
+                        <Link href={buildHref(currentPage - 1)} className={buttonClassName}>
                             Previous
                         </Link>
                     ) : (
@@ -56,7 +63,7 @@ export default function PaginationControls({
 
                 <div className="pagination-controls__edge pagination-controls__edge--next">
                     {hasNext ? (
-                        <Link href={nextHref} className={buttonClassName}>
+                        <Link href={buildHref(currentPage + 1)} className={buttonClassName}>
                             Next
                         </Link>
                     ) : (
@@ -72,7 +79,7 @@ export default function PaginationControls({
     return (
         <nav className="flex items-center justify-between gap-4 pt-4" aria-label="Pagination">
             {hasPrev ? (
-                <Link href={prevHref} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                <Link href={buildHref(currentPage - 1)} className={buttonVariants({ variant: "secondary", size: "sm" })}>
                     Previous
                 </Link>
             ) : (
@@ -84,7 +91,7 @@ export default function PaginationControls({
             <span className="text-sm text-muted-foreground">Page {currentPage}</span>
 
             {hasNext ? (
-                <Link href={nextHref} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                <Link href={buildHref(currentPage + 1)} className={buttonVariants({ variant: "secondary", size: "sm" })}>
                     Next
                 </Link>
             ) : (
