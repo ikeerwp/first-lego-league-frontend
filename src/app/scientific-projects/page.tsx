@@ -44,7 +44,7 @@ export default async function ScientificProjectsPage({ searchParams }: Readonly<
         const service = new ScientificProjectsService(serverAuthProvider);
 
         if (teamName) {
-            projects = await service.getScientificProjectsByTeamName(teamName);
+            projects = await service.searchScientificProjectsByTeamName(teamName);
         }
 
         if (year) {
