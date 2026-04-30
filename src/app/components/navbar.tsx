@@ -34,7 +34,8 @@ export default function Navbar() {
         { href: "/volunteers", label: "Volunteers" },
         { href: "/scientific-projects", label: "Scientific Projects" },
         { href: "/matches", label: "Matches" },
-        { href: "/administrators", label: "Administrators", roles: ["ROLE_ADMIN"] }
+        { href: "/administrators", label: "Administrators", roles: ["ROLE_ADMIN"] },
+        { href: "/competition-tables", label: "Tables", roles: ["ROLE_ADMIN"] }
     ];
 
 
