@@ -21,7 +21,8 @@ import { User } from "@/types/user";
 import { parseErrorMessage, NotFoundError } from "@/types/errors";
 import Link from "next/link";
 import { getTeamDisplayName } from "@/lib/teamUtils";
-import AddMediaForm from "./_add-media-form";
+import MediaUploadForm from "@/app/components/media-upload-form";
+
 
 interface EditionDetailPageProps {
     readonly params: Promise<{ id: string }>;
@@ -294,9 +295,7 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
                                 <h2 className="mt-8 mb-4 text-xl font-semibold text-foreground">Media Gallery</h2>
 
                                 {currentUser && isAdmin(currentUser) && edition && (
-                                    <AddMediaForm
-                                        editionUri={`/editions/${id}`}
-                                    />
+                                    <MediaUploadForm editionId={id} />
                                 )}
 
                                 {mediaError && <ErrorAlert message={mediaError} />}
