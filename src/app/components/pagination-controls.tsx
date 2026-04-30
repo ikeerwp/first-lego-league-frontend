@@ -7,6 +7,8 @@ interface PaginationControlsProps {
     readonly hasNext: boolean;
     readonly hasPrev: boolean;
     readonly basePath: string;
+    readonly variant?: "default" | "editorial";
+    readonly contextLabel?: string;
     readonly searchQuery?: string;
 }
 
@@ -15,6 +17,8 @@ export default function PaginationControls({
     hasNext,
     hasPrev,
     basePath,
+    variant,
+    contextLabel,
     searchQuery,
 }: PaginationControlsProps) {
     if (!hasNext && !hasPrev) return null;
@@ -27,6 +31,50 @@ export default function PaginationControls({
     }
 
     const disabledClass = "pointer-events-none opacity-40";
+    const buttonClassName = cn(
+        buttonVariants({ variant: "secondary", size: "sm" }),
+        variant === "editorial" && "pagination-controls__button",
+    );
+
+    if (variant === "editorial") {
+        return (
+            <nav className="pagination-controls--editorial" aria-label="Pagination">
+                <div className="pagination-controls__edge">
+                    {hasPrev ? (
+                        <Link href={buildHref(currentPage - 1)} className={buttonClassName}>
+                            Previous
+                        </Link>
+                    ) : (
+                        <span className={cn(buttonClassName, disabledClass)} aria-disabled="true">
+                            Previous
+                        </span>
+                    )}
+                </div>
+
+                <div className="pagination-controls__summary">
+                    <div className="pagination-controls__page-line">
+                        <span className="pagination-controls__page-word">Page</span>
+                        <span className="pagination-controls__page-number">{currentPage}</span>
+                    </div>
+                    {contextLabel ? (
+                        <p className="pagination-controls__helper">{contextLabel}</p>
+                    ) : null}
+                </div>
+
+                <div className="pagination-controls__edge pagination-controls__edge--next">
+                    {hasNext ? (
+                        <Link href={buildHref(currentPage + 1)} className={buttonClassName}>
+                            Next
+                        </Link>
+                    ) : (
+                        <span className={cn(buttonClassName, disabledClass)} aria-disabled="true">
+                            Next
+                        </span>
+                    )}
+                </div>
+            </nav>
+        );
+    }
 
     return (
         <nav className="flex items-center justify-between gap-4 pt-4" aria-label="Pagination">
