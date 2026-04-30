@@ -48,9 +48,15 @@ export class ScientificProjectsService {
     }
 
     async searchScientificProjectsByTeamName(teamName: string): Promise<ScientificProject[]> {
-        const normalizedTeamName = normalizeSearchValue(teamName);
+        const trimmedTeamName = teamName.trim();
+        const normalizedTeamName = normalizeSearchValue(trimmedTeamName);
         if (!normalizedTeamName) {
             return this.getScientificProjects();
+        }
+
+        const exactMatches = await this.getScientificProjectsByTeamName(trimmedTeamName);
+        if (exactMatches.length > 0) {
+            return exactMatches;
         }
 
         const projects = await this.getScientificProjects();
