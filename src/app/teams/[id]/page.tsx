@@ -3,6 +3,7 @@ import { TeamsService } from "@/api/teamApi";
 import { UsersService } from "@/api/userApi";
 import { MatchesService } from "@/api/matchesApi";
 import { EditionsService } from "@/api/editionApi";
+import { AwardsService } from "@/api/awardApi";
 import EmptyState from "@/app/components/empty-state";
 import ErrorAlert from "@/app/components/error-alert";
 import { ScientificProjectCardLink } from "@/app/components/scientific-project-card";
@@ -14,7 +15,9 @@ import { ScientificProject } from "@/types/scientificProject";
 import { Team, TeamCoach, TeamMember, TeamMemberSnapshot } from "@/types/team";
 import { User } from "@/types/user";
 import { Match } from "@/types/match";
+import { Award } from "@/types/award";
 import TournamentItinerary, { ScheduleItem } from "./tournament-itinerary";
+import AwardsSection from "./_awards-section";
 
 interface TeamDetailPageProps {
     readonly params: Promise<{ id: string }>;
@@ -45,6 +48,7 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
     const userService = new UsersService(serverAuthProvider);
     const matchesService = new MatchesService(serverAuthProvider);
     const editionsService = new EditionsService(serverAuthProvider);
+    const awardsService = new AwardsService(serverAuthProvider);
 
     let currentUser: User | null = null;
     let team: Team | null = null;
@@ -54,10 +58,12 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
     let scientificProjects: ScientificProject[] = [];
     let matches: Match[] = [];
     let teamMatchesData: { match: Match; table: string; opponent?: string; round?: string }[] = [];
+    let awards: Award[] = [];
 
     let error: string | null = null;
     let membersError: string | null = null;
     let scientificProjectsError: string | null = null;
+    let awardsError: string | null = null;
     const matchesError: string | null = null;
 
     try {
@@ -76,7 +82,7 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
     if (team && !error) {
         const editionUri = team.link("edition")?.href;
         
-        const [membersResult, scientificProjectsResult, matchesResult, editionResult] = await Promise.allSettled([
+        const [membersResult, scientificProjectsResult, matchesResult, editionResult, awardsResult] = await Promise.allSettled([
             Promise.all([
                 service.getTeamCoach(id),
                 service.getTeamMembers(id),
@@ -85,7 +91,8 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
                 ? scientificProjectsService.getScientificProjectsByTeamName(teamDisplayName)
                 : Promise.resolve([] as ScientificProject[]),
             matchesService.getMatches(),
-            editionUri ? editionsService.getEditionByUri(editionUri).catch(() => null) : Promise.resolve(null)
+            editionUri ? editionsService.getEditionByUri(editionUri).catch(() => null) : Promise.resolve(null),
+            teamUri ? awardsService.getAwardsOfTeam(teamUri) : Promise.resolve([] as Award[])
         ]);
 
         if (editionResult.status === "fulfilled" && editionResult.value) {
@@ -106,6 +113,13 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
         } else {
             console.error("Error loading scientific projects:", scientificProjectsResult.reason);
             scientificProjectsError = parseErrorMessage(scientificProjectsResult.reason);
+        }
+
+        if (awardsResult.status === "fulfilled") {
+            awards = awardsResult.value;
+        } else {
+            console.error("Error loading awards:", awardsResult.reason);
+            awardsError = parseErrorMessage(awardsResult.reason);
         }
 
         if (matchesResult.status === "fulfilled") {
@@ -188,11 +202,12 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
 
     const schedule: ScheduleItem[] = [];
 
-    teamMatchesData.forEach(({ match: m, table, opponent, round }) => {
+    teamMatchesData.forEach(({ match: m, table, opponent, round }, index) => {
         if (m.startTime) {
             const isCompleted = m.state === "COMPLETED" || m.state === "FINISHED";
+            const matchId = m.uri ? m.uri.split('/').pop() : (m.id ?? index);
             schedule.push({
-                id: `match-${m.id}`,
+                id: `match-${matchId}`,
                 startTime: m.startTime,
                 endTime: m.endTime,
                 eventType: "Robot Game",
@@ -348,6 +363,25 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
                             schedule={schedule}
                         />
                     </section>
+
+                    {awardsError && (
+                        <ErrorAlert message={`Could not load awards. ${awardsError}`} />
+                    )}
+                    
+                    {!awardsError && awards.length > 0 && (
+                        <AwardsSection 
+                            teamId={id} 
+                            awards={awards.map(a => ({
+                                id: a.id ? String(a.id) : undefined,
+                                uri: a.uri ?? a.link("self")?.href,
+                                name: a.name,
+                                title: a.title,
+                                category: a.category,
+                                description: (a as { description?: string }).description
+                            }))} 
+                            isAdmin={isAdmin} 
+                        />
+                    )}
 
                 </div>
             </div>

@@ -1,7 +1,7 @@
 import type { AuthStrategy } from "@/lib/authProvider";
 import { Award } from "@/types/award";
 import { Team } from "@/types/team";
-import { fetchHalCollection, fetchHalResource } from "./halClient";
+import { fetchHalCollection, fetchHalResource, deleteHal } from "./halClient";
 
 function getResourceUri(resource: Team & { link: (relation: string) => { href?: string } | undefined }): string | null {
     return resource.uri ?? resource.link("self")?.href ?? null;
@@ -9,6 +9,20 @@ function getResourceUri(resource: Team & { link: (relation: string) => { href?: 
 
 export class AwardsService {
     constructor(private readonly authStrategy: AuthStrategy) {}
+
+    async deleteAward(awardId: string): Promise<void> {
+        await deleteHal(`/awards/${awardId}`, this.authStrategy);
+    }
+
+    async getAwardsOfTeam(teamUri: string): Promise<Award[]> {
+        const encodedTeamUri = encodeURIComponent(teamUri);
+        const awards = await fetchHalCollection<Award>(
+            `/awards/search/findByWinner?winner=${encodedTeamUri}`,
+            this.authStrategy,
+            "awards"
+        );
+        return awards;
+    }
 
     async getAwardsOfEdition(editionUri: string): Promise<Award[]> {
         const encodedEditionUri = encodeURIComponent(editionUri);
