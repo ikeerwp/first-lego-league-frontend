@@ -23,6 +23,28 @@ export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 6;
 
+type PageSearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+interface TeamStats {
+  readonly challengeCount: number;
+  readonly exploreCount: number;
+  readonly citiesCount: number;
+  readonly centersCount: number;
+  readonly categoriesCount: number;
+}
+
+interface TeamsLoadResult {
+  readonly teams: Team[];
+  readonly result: HalPage<Team>;
+}
+
+const emptyTeamsPage: HalPage<Team> = {
+  items: [],
+  hasNext: false,
+  hasPrev: false,
+  currentPage: 0,
+};
+
 function getTeamErrorMessage(error: unknown) {
   if (error instanceof ApiError) {
     return parseErrorMessage(error);
@@ -41,6 +63,90 @@ function getUniqueValueCount(values: Array<string | null | undefined>) {
       .map((value) => value?.trim())
       .filter((value): value is string => Boolean(value)),
   ).size;
+}
+
+async function loadCurrentUser() {
+  try {
+    return await new UsersService(serverAuthProvider).getCurrentUser();
+  } catch (error) {
+    if (
+      error instanceof AuthenticationError ||
+      (error instanceof ApiError && error.statusCode === 403)
+    ) {
+      console.warn(
+        "Current user is not authorized to access admin actions on the teams page.",
+      );
+    } else {
+      console.error("Failed to fetch current user on the teams page:", error);
+    }
+
+    return null;
+  }
+}
+
+async function loadTeamsByEdition(year: string) {
+  const teamsService = new TeamsService(serverAuthProvider);
+  const editionsService = new EditionsService(serverAuthProvider);
+  const edition = await editionsService.getEditionByYear(year);
+
+  if (!edition?.uri) {
+    return [];
+  }
+
+  return teamsService.getTeamsByEdition(`${edition.uri}/teams`);
+}
+
+async function loadPagedTeams(urlPage: number) {
+  const teamsService = new TeamsService(serverAuthProvider);
+  return teamsService.getTeamsPaged(urlPage - 1, PAGE_SIZE);
+}
+
+async function loadTeams(year: string | undefined, urlPage: number): Promise<TeamsLoadResult> {
+  if (year) {
+    const teams = await loadTeamsByEdition(year);
+
+    return {
+      teams,
+      result: emptyTeamsPage,
+    };
+  }
+
+  const result = await loadPagedTeams(urlPage);
+
+  return {
+    teams: result.items,
+    result,
+  };
+}
+
+function getTeamStats(teams: Team[]): TeamStats {
+  return {
+    challengeCount: teams.filter((team) => team.category === "CHALLENGE").length,
+    exploreCount: teams.filter((team) => team.category === "EXPLORE").length,
+    citiesCount: getUniqueValueCount(teams.map((team) => team.city)),
+    centersCount: getUniqueValueCount(
+      teams.map((team) => team.educationalCenter),
+    ),
+    categoriesCount: getUniqueValueCount(teams.map((team) => team.category)),
+  };
+}
+
+function mapTeamsToListItems(teams: Team[], yearQuery: string): TeamListItem[] {
+  return teams.map((team, index) => {
+    const teamId = getEncodedResourceId(team.uri);
+    const href = teamId ? `/teams/${teamId}${yearQuery}` : null;
+
+    return {
+      key: team.uri ?? team.id ?? `team-${index}`,
+      href,
+      name: team.name ?? team.id ?? "Unnamed team",
+      category: team.category,
+      city: team.city,
+      educationalCenter: team.educationalCenter ?? undefined,
+      foundationYear: team.foundationYear,
+      inscriptionDate: team.inscriptionDate,
+    };
+  });
 }
 
 function StatCard({
@@ -72,8 +178,6 @@ function StatCard({
   );
 }
 
-type PageSearchParams = Promise<Record<string, string | string[] | undefined>>;
-
 export default async function TeamsPage({
   searchParams,
 }: Readonly<{ searchParams: PageSearchParams }>) {
@@ -83,79 +187,31 @@ export default async function TeamsPage({
   const yearQuery = year ? `?year=${year}` : "";
   const urlPage = Math.max(1, Number(params.page ?? "1") || 1);
 
+  const currentUser: User | null = await loadCurrentUser();
+
   let teams: Team[] = [];
-  let result: HalPage<Team> = {
-    items: [],
-    hasNext: false,
-    hasPrev: false,
-    currentPage: 0,
-  };
+  let result: HalPage<Team> = emptyTeamsPage;
   let error: string | null = null;
-  let currentUser: User | null = null;
 
   try {
-    currentUser = await new UsersService(serverAuthProvider).getCurrentUser();
-  } catch (error) {
-    currentUser = null;
+    const loadedTeams = await loadTeams(year, urlPage);
 
-    if (
-      error instanceof AuthenticationError ||
-      (error instanceof ApiError && error.statusCode === 403)
-    ) {
-      console.warn(
-        "Current user is not authorized to access admin actions on the teams page.",
-      );
-    } else {
-      console.error("Failed to fetch current user on the teams page:", error);
-    }
-  }
-
-  try {
-    const service = new TeamsService(serverAuthProvider);
-
-    if (year) {
-      const editionsService = new EditionsService(serverAuthProvider);
-      const edition = await editionsService.getEditionByYear(year);
-
-      if (edition?.uri) {
-        teams = await service.getTeamsByEdition(`${edition.uri}/teams`);
-      }
-    } else {
-      result = await service.getTeamsPaged(urlPage - 1, PAGE_SIZE);
-      teams = result.items;
-    }
+    teams = loadedTeams.teams;
+    result = loadedTeams.result;
   } catch (e) {
     console.error("Failed to fetch teams:", e);
     error = getTeamErrorMessage(e);
   }
 
-  const challengeCount = teams.filter(
-    (team) => team.category === "CHALLENGE",
-  ).length;
-  const exploreCount = teams.filter((team) => team.category === "EXPLORE").length;
-  const citiesCount = getUniqueValueCount(teams.map((team) => team.city));
-  const centersCount = getUniqueValueCount(
-    teams.map((team) => team.educationalCenter),
-  );
-  const categoriesCount = getUniqueValueCount(
-    teams.map((team) => team.category),
-  );
+  const {
+    challengeCount,
+    exploreCount,
+    citiesCount,
+    centersCount,
+    categoriesCount,
+  } = getTeamStats(teams);
 
-  const teamListItems: TeamListItem[] = teams.map((team, index) => {
-    const teamId = getEncodedResourceId(team.uri);
-    const href = teamId ? `/teams/${teamId}${yearQuery}` : null;
-
-    return {
-      key: team.uri ?? team.id ?? `team-${index}`,
-      href,
-      name: team.name ?? team.id ?? "Unnamed team",
-      category: team.category,
-      city: team.city,
-      educationalCenter: team.educationalCenter ?? undefined,
-      foundationYear: team.foundationYear,
-      inscriptionDate: team.inscriptionDate,
-    };
-  });
+  const teamListItems = mapTeamsToListItems(teams, yearQuery);
 
   return (
     <PageShell
@@ -205,6 +261,7 @@ export default async function TeamsPage({
                     : "City information is not available for the current teams."
                 }
               />
+
               <StatCard
                 icon={Building2}
                 label="Schools and centers"
@@ -215,6 +272,7 @@ export default async function TeamsPage({
                     : "No educational center has been registered yet."
                 }
               />
+
               <StatCard
                 icon={Trophy}
                 label="Categories active"
