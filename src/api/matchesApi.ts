@@ -2,25 +2,12 @@ import type { AuthStrategy } from "@/lib/authProvider";
 import { CompetitionTable } from "@/types/competitionTable";
 import { ApiError } from "@/types/errors";
 import { Match } from "@/types/match";
-import {
-    MatchResult,
-    MatchResultEntity,
-    RegisterMatchScoreRequest,
-    RegisterMatchScoreResponse,
-} from "@/types/matchResult";
+import {MatchResult,MatchResultEntity,RegisterMatchScoreRequest, RegisterMatchScoreResponse,} from "@/types/matchResult";
 import type { HalPage } from "@/types/pagination";
 import { Referee } from "@/types/referee";
 import { Round } from "@/types/round";
 import { Team } from "@/types/team";
-import {
-    API_BASE_URL,
-    createHalResource,
-    deleteHal,
-    fetchHalCollection,
-    fetchHalPagedCollection,
-    fetchHalResource,
-    postHal,
-} from "./halClient";
+import {API_BASE_URL,createHalResource,deleteHal,fetchHalCollection,fetchHalPagedCollection,fetchHalResource,postHal,} from "./halClient";
 
 export type CreateMatchPayload = {
     startTime: string;
@@ -32,17 +19,27 @@ export type CreateMatchPayload = {
     referee: string;
 };
 
-function normalizeResourcePath(resourceUri: string) {
-    if (resourceUri.startsWith("/")) {
-        return resourceUri;
+function getSafeMatchResultResourcePath(resourceUri: string) {
+    let resourcePath = resourceUri;
+
+    if (resourceUri.startsWith("http")) {
+        const url = new URL(resourceUri);
+        const apiUrl = new URL(API_BASE_URL);
+
+    if (url.hostname !== apiUrl.hostname) {
+        throw new ApiError("Invalid match result resource URL", 400, true);
     }
 
-    try {
-        const parsed = new URL(resourceUri);
-        return `${parsed.pathname}${parsed.search}`;
-    } catch {
-        return resourceUri;
+        resourcePath = `${url.pathname}${url.search}`;
     }
+
+    const pathname = resourcePath.split(/[?#]/, 1)[0];
+
+    if (!/^\/matchResults\/[^/]+$/.test(pathname)) {
+        throw new ApiError("Invalid match result resource path", 400, true);
+    }
+
+    return resourcePath;
 }
 
 export class MatchesService {
@@ -180,7 +177,7 @@ export class MatchesService {
 
     async updateMatchResult(resultUri: string, score: number): Promise<void> {
         const authorization = await this.authStrategy.getAuth();
-        const resourcePath = normalizeResourcePath(resultUri);
+        const resourcePath = getSafeMatchResultResourcePath(resultUri);
 
         const response = await fetch(`${API_BASE_URL}${resourcePath}`, {
             method: "PATCH",

@@ -13,6 +13,8 @@ import {
 interface UpdateMatchResultScoresRequest {
     readonly teamAResultUri: string;
     readonly teamBResultUri: string;
+    readonly previousTeamAScore: number;
+    readonly previousTeamBScore: number;
     readonly teamAScore: number;
     readonly teamBScore: number;
 }
@@ -60,19 +62,31 @@ export async function registerMatchResult(
 export async function updateMatchResultScores({
     teamAResultUri,
     teamBResultUri,
+    previousTeamAScore,
+    previousTeamBScore,
     teamAScore,
     teamBScore,
 }: UpdateMatchResultScoresRequest): Promise<void> {
     await assertCanManageMatchResults();
     validateScores(teamAScore, teamBScore);
+    validateScores(previousTeamAScore, previousTeamBScore);
+
+    const service = new MatchesService(serverAuthProvider);
 
     try {
-        const service = new MatchesService(serverAuthProvider);
+        await service.updateMatchResult(teamAResultUri, teamAScore);
 
-        await Promise.all([
-            service.updateMatchResult(teamAResultUri, teamAScore),
-            service.updateMatchResult(teamBResultUri, teamBScore),
-        ]);
+        try {
+            await service.updateMatchResult(teamBResultUri, teamBScore);
+        } catch (secondUpdateError) {
+            try {
+                await service.updateMatchResult(teamAResultUri, previousTeamAScore);
+            } catch (rollbackError) {
+                console.error("Failed to rollback Team A score update:", rollbackError);
+            }
+
+            throw secondUpdateError;
+        }
     } catch (e) {
         throw new Error(parseErrorMessage(e));
     }

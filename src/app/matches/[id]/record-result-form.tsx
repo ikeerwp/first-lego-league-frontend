@@ -74,22 +74,33 @@ export default function RecordResultForm({
         const teamBScore = Number(data.teamBScore);
 
         try {
-            if (isEditMode) {
-                if (!teamAResultUri || !teamBResultUri) {
-                    throw new Error("Cannot update result because result links are missing.");
-                }
-
-                await updateMatchResultScores({
-                    teamAResultUri,
-                    teamBResultUri,
-                    teamAScore,
-                    teamBScore,
-                });
-
-                setSuccess(true);
-                router.refresh();
-                return;
+        if (isEditMode) {
+            if (!teamAResultUri || !teamBResultUri) {
+                throw new Error("Cannot update result because result links are missing.");
             }
+
+            if (
+                initialTeamAScore === undefined ||
+                initialTeamBScore === undefined ||
+                !Number.isInteger(initialTeamAScore) ||
+                !Number.isInteger(initialTeamBScore)
+            ) {
+                throw new Error("Cannot update result because previous scores are missing.");
+            }
+
+            await updateMatchResultScores({
+                teamAResultUri,
+                teamBResultUri,
+                previousTeamAScore: initialTeamAScore,
+                previousTeamBScore: initialTeamBScore,
+                teamAScore,
+                teamBScore,
+            });
+
+            setSuccess(true);
+            router.refresh();
+            return;
+        }
 
             await registerMatchResult({
                 matchId,
