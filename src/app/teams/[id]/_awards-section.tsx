@@ -15,12 +15,12 @@ export interface AwardSnapshot {
 }
 
 interface AwardsSectionProps {
-  teamId: string;
-  awards: AwardSnapshot[];
-  isAdmin: boolean;
+  readonly teamId: string;
+  readonly awards: AwardSnapshot[];
+  readonly isAdmin: boolean;
 }
 
-export default function AwardsSection({ teamId, awards, isAdmin }: AwardsSectionProps) {
+export default function AwardsSection({ teamId, awards, isAdmin }: Readonly<AwardsSectionProps>) {
   const [awardToDelete, setAwardToDelete] = useState<AwardSnapshot | null>(null);
 
   if (!awards || awards.length === 0) {
