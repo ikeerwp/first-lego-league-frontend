@@ -113,7 +113,9 @@ function LightboxMedia({ item, index }: { readonly item: MediaItem; readonly ind
                 src={item.url}
                 controls
                 className="max-h-[60vh] max-w-full rounded-xl shadow-lg"
-            />
+            >
+                <track kind="captions" />
+            </video>
         );
     }
     if (isVideo(item.type)) {
