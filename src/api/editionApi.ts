@@ -100,4 +100,21 @@ export class EditionsService {
         }
         return res.json() as Promise<EditionCompetitionTable[]>;
     }
+
+    async deleteEdition(id: string): Promise<void> {
+    const editionId = encodeURIComponent(id);
+    const authorization = await this.authStrategy.getAuth();
+
+    const res = await fetch(`${API_BASE_URL}/editions/${editionId}`, {
+        method: "DELETE",
+        headers: {
+            ...(authorization ? { Authorization: authorization } : {}),
+        },
+        cache: "no-store",
+    });
+
+    if (!res.ok) {
+        throw new ApiError("Failed to delete edition", res.status, true);
+    }
+}
 }

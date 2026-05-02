@@ -3,12 +3,14 @@ import ErrorAlert from "@/app/components/error-alert";
 import PageShell from "@/app/components/page-shell";
 import { InfoRow } from "@/app/components/info-row";
 import EmptyState from "@/app/components/empty-state";
+import { buttonVariants } from "@/app/components/button";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { NotFoundError, parseErrorMessage } from "@/types/errors";
 import type { ProjectRoom } from "@/types/projectRoom";
 import { mergeHal, mergeHalArray } from "@/api/halClient";
 import type { Volunteer } from "@/types/volunteer";
 import type { ScientificProject } from "@/types/scientificProject";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 interface ProjectRoomDetailPageProps {
@@ -37,23 +39,35 @@ export default async function ProjectRoomDetailPage(props: Readonly<ProjectRoomD
             : `Could not load room details. ${parseErrorMessage(e)}`;
     }
 
-    const judge = room?.embedded('managedByJudge')
-        ? mergeHal<Volunteer>(room.embedded('managedByJudge'))
+    const judge = room?.embedded("managedByJudge")
+        ? mergeHal<Volunteer>(room.embedded("managedByJudge"))
         : null;
 
-    const panelists = room?.embeddedArray('panelists')
-        ? mergeHalArray<Volunteer>(room.embeddedArray('panelists'))
+    const panelists = room?.embeddedArray("panelists")
+        ? mergeHalArray<Volunteer>(room.embeddedArray("panelists"))
         : [];
 
-    const scientificProjects = room?.embeddedArray('scientificProjects')
-        ? mergeHalArray<ScientificProject>(room.embeddedArray('scientificProjects'))
+    const scientificProjects = room?.embeddedArray("scientificProjects")
+        ? mergeHalArray<ScientificProject>(room.embeddedArray("scientificProjects"))
         : [];
+
+    const evaluationRoomNumber = room?.roomNumber ?? id;
 
     return (
         <PageShell
             eyebrow="Judging"
-            title={room ? `Project Room` : "Project Room"}
+            title="Project Room"
             description="Details about this project room, its judge, panelists, and assigned scientific projects."
+            heroAside={
+            room ? (
+                <Link
+                    href={`/evaluation-rooms/${evaluationRoomNumber}`}
+                    className={buttonVariants({ variant: "default", size: "sm" })}
+                >
+                    Open judge evaluation view
+                </Link>
+            ) : undefined
+        }
         >
             {error && <ErrorAlert message={error} />}
 
@@ -62,17 +76,26 @@ export default async function ProjectRoomDetailPage(props: Readonly<ProjectRoomD
                     <section aria-labelledby="judge-heading">
                         <div className="mb-4 space-y-1">
                             <div className="page-eyebrow">Judging</div>
-                            <h2 id="judge-heading" className="section-title">Managing judge</h2>
+                            <h2 id="judge-heading" className="section-title">
+                                Managing judge
+                            </h2>
                         </div>
-                        <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+
+                        <div className="space-y-3 rounded-lg border border-border bg-card p-5">
                             {judge ? (
                                 <>
                                     <InfoRow label="Name" value={judge.name ?? "—"} />
-                                    {judge.emailAddress && <InfoRow label="Email" value={judge.emailAddress} />}
-                                    {judge.phoneNumber && <InfoRow label="Phone" value={judge.phoneNumber} />}
+                                    {judge.emailAddress && (
+                                        <InfoRow label="Email" value={judge.emailAddress} />
+                                    )}
+                                    {judge.phoneNumber && (
+                                        <InfoRow label="Phone" value={judge.phoneNumber} />
+                                    )}
                                 </>
                             ) : (
-                                <p className="text-sm text-muted-foreground">No judge assigned to this room.</p>
+                                <p className="text-sm text-muted-foreground">
+                                    No judge assigned to this room.
+                                </p>
                             )}
                         </div>
                     </section>
@@ -80,8 +103,11 @@ export default async function ProjectRoomDetailPage(props: Readonly<ProjectRoomD
                     <section aria-labelledby="panelists-heading">
                         <div className="mb-4 space-y-1">
                             <div className="page-eyebrow">Panel</div>
-                            <h2 id="panelists-heading" className="section-title">Panelists</h2>
+                            <h2 id="panelists-heading" className="section-title">
+                                Panelists
+                            </h2>
                         </div>
+
                         {panelists.length === 0 ? (
                             <EmptyState
                                 title="No panelists assigned"
@@ -90,9 +116,14 @@ export default async function ProjectRoomDetailPage(props: Readonly<ProjectRoomD
                         ) : (
                             <ul className="space-y-3">
                                 {panelists.map((panelist, index) => (
-                                    <li key={panelist.uri ?? index} className="rounded-lg border border-border bg-card p-5 space-y-2">
+                                    <li
+                                        key={panelist.uri ?? index}
+                                        className="space-y-2 rounded-lg border border-border bg-card p-5"
+                                    >
                                         <InfoRow label="Name" value={panelist.name ?? "—"} />
-                                        {panelist.emailAddress && <InfoRow label="Email" value={panelist.emailAddress} />}
+                                        {panelist.emailAddress && (
+                                            <InfoRow label="Email" value={panelist.emailAddress} />
+                                        )}
                                     </li>
                                 ))}
                             </ul>
@@ -102,8 +133,11 @@ export default async function ProjectRoomDetailPage(props: Readonly<ProjectRoomD
                     <section aria-labelledby="projects-heading">
                         <div className="mb-4 space-y-1">
                             <div className="page-eyebrow">Innovation</div>
-                            <h2 id="projects-heading" className="section-title">Assigned scientific projects</h2>
+                            <h2 id="projects-heading" className="section-title">
+                                Assigned scientific projects
+                            </h2>
                         </div>
+
                         {scientificProjects.length === 0 ? (
                             <EmptyState
                                 title="No projects assigned"
@@ -112,10 +146,19 @@ export default async function ProjectRoomDetailPage(props: Readonly<ProjectRoomD
                         ) : (
                             <ul className="space-y-3">
                                 {scientificProjects.map((project, index) => (
-                                    <li key={project.uri ?? index} className="rounded-lg border border-border bg-card p-5 space-y-2">
-                                        {project.team && <InfoRow label="Team" value={project.team} />}
-                                        {project.score != null && <InfoRow label="Score" value={`${project.score} pts`} />}
-                                        {project.comments && <InfoRow label="Comments" value={project.comments} />}
+                                    <li
+                                        key={project.uri ?? index}
+                                        className="space-y-2 rounded-lg border border-border bg-card p-5"
+                                    >
+                                        {project.team && (
+                                            <InfoRow label="Team" value={project.team} />
+                                        )}
+                                        {project.score != null && (
+                                            <InfoRow label="Score" value={`${project.score} pts`} />
+                                        )}
+                                        {project.comments && (
+                                            <InfoRow label="Comments" value={project.comments} />
+                                        )}
                                     </li>
                                 ))}
                             </ul>

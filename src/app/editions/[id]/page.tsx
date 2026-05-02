@@ -22,6 +22,8 @@ import { parseErrorMessage, NotFoundError } from "@/types/errors";
 import Link from "next/link";
 import { getTeamDisplayName } from "@/lib/teamUtils";
 import MediaUploadForm from "@/app/components/media-upload-form";
+import { redirect } from "next/navigation";
+import DeleteEditionButton from "./delete-edition-button";
 
 
 interface EditionDetailPageProps {
@@ -141,6 +143,13 @@ function getAwardsByTeamUri(awards: Award[]): Map<string, Award[]> {
 
 export default async function EditionDetailPage(props: Readonly<EditionDetailPageProps>) {
     const { id } = await props.params;
+
+    async function deleteEditionAction() {
+    "use server";
+
+    await new EditionsService(serverAuthProvider).deleteEdition(id);
+    redirect("/editions");
+}
     const editionsService = new EditionsService(serverAuthProvider);
     const awardsService = new AwardsService(serverAuthProvider);
     const mediaService = new MediaService(serverAuthProvider);
@@ -211,10 +220,17 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
                         </div>
 
                         {currentUser && isAdmin(currentUser) && (
-                            <Link href={`/editions/${id}/edit`} className={buttonVariants({ variant: "default", size: "sm" })}>
+                        <div className="flex gap-2">
+                            <Link
+                                href={`/editions/${id}/edit`}
+                                className={buttonVariants({ variant: "default", size: "sm" })}
+                            >
                                 ✏️ edit
                             </Link>
-                        )}
+
+                            <DeleteEditionButton deleteAction={deleteEditionAction} />
+                        </div>
+                    )}
                     </div>
 
                     {error && (

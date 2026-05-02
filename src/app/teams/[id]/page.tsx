@@ -18,6 +18,7 @@ import { Match } from "@/types/match";
 import { Award } from "@/types/award";
 import TournamentItinerary, { ScheduleItem } from "./tournament-itinerary";
 import AwardsSection from "./_awards-section";
+import TeamShareButton from "./team-share-button";
 
 interface TeamDetailPageProps {
     readonly params: Promise<{ id: string }>;
@@ -90,7 +91,6 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
 
     let currentUser: User | null = null;
     let team: Team | null = null;
-    let editionYearStr: string | undefined;
     let coaches: TeamCoach[] = [];
     let members: TeamMember[] = [];
     let scientificProjects: ScientificProject[] = [];
@@ -110,11 +110,11 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
         if (e instanceof NotFoundError) {
             return <EmptyState title="Not found" description="Team does not exist" />;
         }
+
         error = parseErrorMessage(e);
     }
 
     const teamDisplayName = getTeamDisplayName(team);
-    const teamUri = team?.link("self")?.href ?? `/teams/${id}`;
 
     if (team && !error) {
         const editionUri = team.link("edition")?.href;
@@ -131,10 +131,6 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
             editionUri ? editionsService.getEditionByUri(editionUri).catch(() => null) : Promise.resolve(null),
             teamUri ? awardsService.getAwardsOfTeam(teamUri) : Promise.resolve([] as Award[])
         ]);
-
-        if (editionResult.status === "fulfilled" && editionResult.value) {
-            editionYearStr = String(editionResult.value.year);
-        }
 
         if (membersResult.status === "fulfilled") {
             const [coachesData, membersData] = membersResult.value;
@@ -193,10 +189,17 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
                 coach.emailAddress?.trim().toLowerCase() === currentUserEmail
         );
 
+    const coachName =
+        coaches.length > 0
+            ? coaches
+                .map((coach) => coach.name ?? coach.emailAddress ?? "Unnamed coach")
+                .join(", ")
+            : "No coach assigned";
+
     const initialMembers = members.map(toTeamMemberSnapshot);
 
     const membersKey = initialMembers
-        .map(m => m.uri ?? String(m.id ?? m.name ?? ""))
+        .map((member) => member.uri ?? String(member.id ?? member.name ?? ""))
         .join("|");
 
     const schedule: ScheduleItem[] = [];
@@ -237,52 +240,23 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
         <div className="flex min-h-screen items-center justify-center bg-background">
             <div className="w-full max-w-3xl px-4 py-10">
                 <div className="w-full rounded-lg border border-border bg-card p-6 shadow-sm">
+                    <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <h1 className="text-2xl font-semibold text-foreground">
+                            {teamDisplayName ?? "Unnamed team"}
+                        </h1>
 
-                    <h1 className="mb-2 text-2xl font-semibold text-foreground">
-                        {teamDisplayName ?? "Unnamed team"}
-                    </h1>
+                        <TeamShareButton teamName={teamDisplayName ?? "Unnamed team"} />
+                    </div>
 
-                    <div className="mb-6 space-y-2 text-sm text-muted-foreground">
+                    <div className="mb-6 space-y-1 text-sm text-muted-foreground">
                         {team.city && (
-                            <p><strong>City:</strong> {team.city}</p>
+                            <p>
+                                <strong>City:</strong> {team.city}
+                            </p>
                         )}
-
-                        <div>
-                            <strong>Coaches:</strong>
-
-                            {coaches.length === 0 ? (
-                                <p className="mt-1 text-muted-foreground">
-                                    No coaches assigned
-                                </p>
-                            ) : (
-                                <div className="mt-2 space-y-2">
-                                    {coaches.map((coach, index) => (
-                                        <div
-                                            key={coach.uri ?? coach.id ?? index}
-                                            className="rounded-md border border-border p-3"
-                                        >
-                                            <p className="font-medium text-foreground">
-                                                {coach.name ?? "Unnamed coach"}
-                                            </p>
-
-                                            <div className="text-xs text-muted-foreground space-y-1">
-                                                {coach.emailAddress && (
-                                                    <p>Email: {coach.emailAddress}</p>
-                                                )}
-
-                                                {coach.phoneNumber && (
-                                                    <p>Phone: {coach.phoneNumber}</p>
-                                                )}
-
-                                                {!coach.emailAddress && !coach.phoneNumber && (
-                                                    <p>No contact information available</p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                        <p>
+                            <strong>Coach:</strong> {coachName}
+                        </p>
                     </div>
 
                     {isAdmin && (
@@ -315,17 +289,20 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
                         />
                     )}
 
-                    {membersError && (
-                        <ErrorAlert message={membersError} />
-                    )}
+                    {membersError && <ErrorAlert message={membersError} />}
 
                     <section aria-labelledby="team-projects-heading">
-                        <h2 id="team-projects-heading" className="mt-8 mb-4 text-xl font-semibold">
+                        <h2
+                            id="team-projects-heading"
+                            className="mt-8 mb-4 text-xl font-semibold"
+                        >
                             Scientific Projects
                         </h2>
 
                         {scientificProjectsError && (
-                            <ErrorAlert message={`Could not load scientific projects. ${scientificProjectsError}`} />
+                            <ErrorAlert
+                                message={`Could not load scientific projects. ${scientificProjectsError}`}
+                            />
                         )}
 
                         {!scientificProjectsError && scientificProjects.length === 0 && (

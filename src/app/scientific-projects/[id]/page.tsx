@@ -27,13 +27,22 @@ interface ScientificProjectDetailPageProps {
 function getProjectTitle(project: ScientificProject | null, id: string): string {
     if (!project) {
         let decodedId = id;
-        try { decodedId = decodeURIComponent(id); } catch { /* use raw id */ }
+
+        try {
+            decodedId = decodeURIComponent(id);
+        } catch {
+            // Use raw id.
+        }
+
         return `Scientific Project ${decodedId}`;
     }
+
     return project.comments ? project.comments : `Scientific Project ${id}`;
 }
 
-export default async function ScientificProjectDetailPage(props: Readonly<ScientificProjectDetailPageProps>) {
+export default async function ScientificProjectDetailPage(
+    props: Readonly<ScientificProjectDetailPageProps>
+) {
     const { id } = await props.params;
     const service = new ScientificProjectsService(serverAuthProvider);
     const userService = new UsersService(serverAuthProvider);
@@ -71,6 +80,7 @@ export default async function ScientificProjectDetailPage(props: Readonly<Scient
     }
 
     const teamHref = project?.link("team")?.href ?? project?.team;
+
     if (teamHref) {
         try {
             team = await fetchHalResource<Team>(teamHref, serverAuthProvider);
@@ -81,9 +91,13 @@ export default async function ScientificProjectDetailPage(props: Readonly<Scient
     }
 
     const projectRoomHref = project?.link("projectRoom")?.href;
+
     if (projectRoomHref) {
         try {
-            projectRoom = await fetchHalResource<ProjectRoom>(projectRoomHref, serverAuthProvider);
+            projectRoom = await fetchHalResource<ProjectRoom>(
+                projectRoomHref,
+                serverAuthProvider
+            );
         } catch (e) {
             console.error("Failed to fetch project room:", e);
         }
@@ -94,8 +108,16 @@ export default async function ScientificProjectDetailPage(props: Readonly<Scient
         const panelistsHref = projectRoom.link("panelists")?.href;
 
         const [judgeResult, panelistsResult] = await Promise.allSettled([
-            judgeHref ? fetchHalResource<Volunteer>(judgeHref, serverAuthProvider) : Promise.resolve(null),
-            panelistsHref ? fetchHalCollection<Volunteer>(panelistsHref, serverAuthProvider, "judges") : Promise.resolve([]),
+            judgeHref
+                ? fetchHalResource<Volunteer>(judgeHref, serverAuthProvider)
+                : Promise.resolve(null),
+            panelistsHref
+                ? fetchHalCollection<Volunteer>(
+                    panelistsHref,
+                    serverAuthProvider,
+                    "judges"
+                )
+                : Promise.resolve([]),
         ]);
 
         if (judgeResult.status === "fulfilled") {
@@ -115,12 +137,24 @@ export default async function ScientificProjectDetailPage(props: Readonly<Scient
         <PageShell
             eyebrow="Scientific Project"
             title={getProjectTitle(project, id)}
-            description={project?.score !== undefined && project?.score !== null ? `Score: ${project.score} pts` : undefined}
-            heroAside={isAdmin(currentUser) && project ? (
-                <Link href={`/scientific-projects/${id}/edit`} className={buttonVariants({ variant: "default", size: "sm" })}>
-                    Edit
-                </Link>
-            ) : undefined}
+            description={
+                project?.score !== undefined && project?.score !== null
+                    ? `Score: ${project.score} pts`
+                    : undefined
+            }
+            heroAside={
+                isAdmin(currentUser) && project ? (
+                    <Link
+                        href={`/scientific-projects/${id}/edit`}
+                        className={buttonVariants({
+                            variant: "default",
+                            size: "sm",
+                        })}
+                    >
+                        Edit
+                    </Link>
+                ) : undefined
+            }
         >
             {projectError && <ErrorAlert message={projectError} />}
 
@@ -129,17 +163,22 @@ export default async function ScientificProjectDetailPage(props: Readonly<Scient
                     <section aria-labelledby="project-info-heading">
                         <div className="mb-4 space-y-1">
                             <div className="page-eyebrow">Evaluation</div>
-                            <h2 id="project-info-heading" className="section-title">Project details</h2>
+                            <h2 id="project-info-heading" className="section-title">
+                                Project details
+                            </h2>
                         </div>
+
                         <div className="rounded-lg border border-border bg-card p-5">
                             <div className="space-y-3">
                                 {project.score !== undefined && project.score !== null && (
                                     <InfoRow label="Score" value={`${project.score} pts`} />
                                 )}
+
                                 {project.comments && (
                                     <InfoRow label="Comments" value={project.comments} />
                                 )}
                             </div>
+
                             <ScientificProjectEvaluationEditor
                                 projectId={id}
                                 currentScore={project.score}
@@ -152,36 +191,80 @@ export default async function ScientificProjectDetailPage(props: Readonly<Scient
                     <section aria-labelledby="team-heading">
                         <div className="mb-4 space-y-1">
                             <div className="page-eyebrow">Participant</div>
-                            <h2 id="team-heading" className="section-title">Presenting team</h2>
+                            <h2 id="team-heading" className="section-title">
+                                Presenting team
+                            </h2>
                         </div>
 
                         {teamError && <ErrorAlert message={teamError} />}
 
-                        {!teamError && team && <TeamCard team={team} label="Presenting team" />}
+                        {!teamError && team && (
+                            <TeamCard team={team} label="Presenting team" />
+                        )}
                     </section>
 
                     <section aria-labelledby="room-heading">
                         <div className="mb-4 space-y-1">
                             <div className="page-eyebrow">Venue</div>
-                            <h2 id="room-heading" className="section-title">Evaluation room</h2>
+                            <h2 id="room-heading" className="section-title">
+                                Evaluation room
+                            </h2>
                         </div>
+
                         <div className="rounded-lg border border-border bg-card p-5">
                             {!projectRoom && (
-                                <p className="text-sm text-muted-foreground">No evaluation room assigned.</p>
+                                <p className="text-sm text-muted-foreground">
+                                    No evaluation room assigned.
+                                </p>
                             )}
+
                             {projectRoom && (
                                 <div className="space-y-3">
                                     {projectRoom.roomNumber && (
-                                        <InfoRow label="Room" value={projectRoom.roomNumber + ""} />
+                                        <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-2">
+                                            <span className="min-w-36 text-sm font-medium text-foreground">
+                                                Room
+                                            </span>
+
+                                            <Link
+                                                href={`/evaluation-rooms/${projectRoom.roomNumber}`}
+                                                className="text-sm font-medium text-accent hover:underline"
+                                            >
+                                                Room {projectRoom.roomNumber}
+                                            </Link>
+                                        </div>
                                     )}
+
                                     {managedByJudge && (
-                                        <InfoRow label="Judge" value={managedByJudge.name ?? managedByJudge.emailAddress ?? "Unknown judge"} />
+                                        <InfoRow
+                                            label="Judge"
+                                            value={
+                                                managedByJudge.name
+                                                ?? managedByJudge.emailAddress
+                                                ?? "Unknown judge"
+                                            }
+                                        />
                                     )}
+
                                     {panelists.length > 0 && (
-                                        <InfoRow label="Panelists" value={panelists.map(p => p.name ?? p.emailAddress ?? "Unknown").join(", ")} />
+                                        <InfoRow
+                                            label="Panelists"
+                                            value={panelists
+                                                .map((panelist) =>
+                                                    panelist.name
+                                                    ?? panelist.emailAddress
+                                                    ?? "Unknown"
+                                                )
+                                                .join(", ")}
+                                        />
                                     )}
-                                    {!projectRoom.roomNumber && !managedByJudge && panelists.length === 0 && (
-                                        <p className="text-sm text-muted-foreground">No room details available.</p>
+
+                                    {!projectRoom.roomNumber
+                                        && !managedByJudge
+                                        && panelists.length === 0 && (
+                                        <p className="text-sm text-muted-foreground">
+                                            No room details available.
+                                        </p>
                                     )}
                                 </div>
                             )}

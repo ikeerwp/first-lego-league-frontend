@@ -53,7 +53,7 @@ export default async function UsersPage(props: Readonly<UsersPageProps>) {
                     <div className="page-eyebrow">Registered users</div>
                     <h2 className="section-title">Directory</h2>
                     <p className="section-copy max-w-3xl">
-                        Select a user to view profile details and related records.
+                        Select a user to view profile details.
                     </p>
                 </div>
 
