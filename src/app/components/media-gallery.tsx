@@ -107,6 +107,15 @@ function LightboxMedia({ item, index }: { readonly item: MediaItem; readonly ind
         // eslint-disable-next-line @next/next/no-img-element
         return <img src={item.url} alt={`Media ${index + 1}`} className="max-h-[60vh] max-w-full rounded-xl object-contain shadow-lg" />;
     }
+    if (isVideo(item.type) && item.url) {
+        return (
+            <video
+                src={item.url}
+                controls
+                className="max-h-[60vh] max-w-full rounded-xl shadow-lg"
+            />
+        );
+    }
     if (isVideo(item.type)) {
         return (
             <div className="flex h-56 w-full max-w-sm items-center justify-center rounded-xl bg-zinc-900">
