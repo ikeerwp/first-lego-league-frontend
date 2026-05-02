@@ -21,18 +21,51 @@ interface AwardsSectionProps {
   readonly isAdmin: boolean;
 }
 
-export default function AwardsSection({ teamId, awards, isAdmin }: Readonly<AwardsSectionProps>) {
-  const [awardToDelete, setAwardToDelete] = useState<AwardSnapshot | null>(null);
+export default function AwardsManager({ teamId, awards, isAdmin }: Readonly<AwardsSectionProps>) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   if ((!awards || awards.length === 0) && !successMessage) {
     return null;
   }
 
+  return (
+    <div className="mt-8">
+      {successMessage && (
+        <output className="block mb-4 rounded-md bg-green-50 p-4">
+          <div className="flex">
+            <div className="shrink-0">
+              <CheckCircle className="h-5 w-5 text-green-400" aria-hidden="true" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-green-800">{successMessage}</p>
+            </div>
+          </div>
+        </output>
+      )}
+
+      {awards && awards.length > 0 && (
+        <AwardsSection
+          teamId={teamId}
+          awards={awards}
+          isAdmin={isAdmin}
+          onSuccess={setSuccessMessage}
+        />
+      )}
+    </div>
+  );
+}
+
+interface InternalAwardsSectionProps extends AwardsSectionProps {
+  readonly onSuccess: (msg: string | null) => void;
+}
+
+function AwardsSection({ teamId, awards, isAdmin, onSuccess }: Readonly<InternalAwardsSectionProps>) {
+  const [awardToDelete, setAwardToDelete] = useState<AwardSnapshot | null>(null);
+
   const handleDelete = async () => {
     if (!awardToDelete) return;
     const awardId =
-      awardToDelete.uri?.split("/").filter(Boolean).pop() ?? awardToDelete.id;
+      awardToDelete.uri?.split("/").findLast(Boolean) ?? awardToDelete.id;
 
     if (!awardId) {
       throw new Error("Could not determine which award to delete");
@@ -43,66 +76,49 @@ export default function AwardsSection({ teamId, awards, isAdmin }: Readonly<Awar
       throw new Error(result.error);
     }
 
-    setSuccessMessage(`Successfully deleted award: ${awardToDelete.name ?? awardToDelete.title ?? awardToDelete.category ?? "Unknown Award"}`);
+    onSuccess(`Successfully deleted award: ${awardToDelete.name ?? awardToDelete.title ?? awardToDelete.category ?? "Unknown Award"}`);
     setAwardToDelete(null);
   };
 
   return (
-    <section aria-labelledby="team-awards-heading" className="mt-8">
-      {successMessage && (
-        <div className="mb-4 rounded-md bg-green-50 p-4" role="status">
-          <div className="flex">
-            <div className="shrink-0">
-              <CheckCircle className="h-5 w-5 text-green-400" aria-hidden="true" />
-            </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-green-800">{successMessage}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {awards && awards.length > 0 && (
-        <>
-          <h2 id="team-awards-heading" className="mb-4 text-xl font-semibold">
-            Awards
-          </h2>
-          <div className="space-y-3">
-            {awards.map((award, index) => {
-              const awardName = award.name ?? award.title ?? award.category ?? `Award ${index + 1}`;
+    <section aria-labelledby="team-awards-heading">
+      <h2 id="team-awards-heading" className="mb-4 text-xl font-semibold">
+        Awards
+      </h2>
+      <div className="space-y-3">
+        {awards.map((award, index) => {
+          const awardName = award.name ?? award.title ?? award.category ?? `Award ${index + 1}`;
+          
+          return (
+            <div
+              key={award.uri ?? String(award.id ?? index)}
+              className="flex items-center justify-between rounded-md border border-border p-4 bg-card"
+            >
+              <div>
+                <p className="font-medium text-foreground">{awardName}</p>
+                {award.description && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {award.description}
+                  </p>
+                )}
+              </div>
               
-              return (
-                <div
-                  key={award.uri ?? String(award.id ?? index)}
-                  className="flex items-center justify-between rounded-md border border-border p-4 bg-card"
+              {isAdmin && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    setAwardToDelete(award);
+                    onSuccess(null);
+                  }}
                 >
-                  <div>
-                    <p className="font-medium text-foreground">{awardName}</p>
-                    {award.description && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {award.description}
-                      </p>
-                    )}
-                  </div>
-                  
-                  {isAdmin && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        setAwardToDelete(award);
-                        setSuccessMessage(null);
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
+                  Delete
+                </Button>
+              )}
+            </div>
+          );
+        })}
+      </div>
 
       {awardToDelete && (
         <ConfirmDestructiveDialog

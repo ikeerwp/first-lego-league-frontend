@@ -40,6 +40,44 @@ function getTeamDisplayName(team: Team | null): string | null {
     return team.name ?? team.id ?? null;
 }
 
+async function resolveMatchForTeam(m: Match, targetId: string, matchesService: MatchesService) {
+    const matchIdStr = m.uri ? m.uri.split("/").pop() : String(m.id);
+    if (!matchIdStr) return { m, hasTeam: false, table: "Unknown" };
+    
+    try {
+        const [tA, tB, compTable, matchRound] = await Promise.all([
+            m.link("teamA") ? matchesService.getMatchTeamA(matchIdStr).catch(() => null) : Promise.resolve(null),
+            m.link("teamB") ? matchesService.getMatchTeamB(matchIdStr).catch(() => null) : Promise.resolve(null),
+            m.link("competitionTable") ? matchesService.getMatchCompetitionTable(matchIdStr).catch(() => null) : Promise.resolve(null),
+            m.link("round") ? matchesService.getMatchRound(matchIdStr).catch(() => null) : Promise.resolve(null)
+        ]);
+        
+        const idA = tA?.id ? String(tA.id) : undefined;
+        const idB = tB?.id ? String(tB.id) : undefined;
+        
+        const hasTeam = idA === targetId || idB === targetId;
+        let opponent: string | undefined;
+        
+        if (hasTeam) {
+            if (idA === targetId) {
+                opponent = tB?.name ?? tB?.id ?? "Unknown Team";
+            } else {
+                opponent = tA?.name ?? tA?.id ?? "Unknown Team";
+            }
+        }
+        
+        const tableId = compTable?.uri ? compTable.uri.split("/").pop() : "Unknown";
+        let roundStr: string | undefined;
+        if (matchRound) {
+            roundStr = matchRound.number === undefined ? undefined : `Round ${matchRound.number}`;
+        }
+        
+        return { m, hasTeam, table: tableId ?? "Unknown", opponent, round: roundStr };
+    } catch {
+        return { m, hasTeam: false, table: "Unknown" };
+    }
+}
+
 export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps>) {
     const { id } = await props.params;
 
@@ -56,7 +94,6 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
     let coaches: TeamCoach[] = [];
     let members: TeamMember[] = [];
     let scientificProjects: ScientificProject[] = [];
-    let matches: Match[] = [];
     let teamMatchesData: { match: Match; table: string; opponent?: string; round?: string }[] = [];
     let awards: Award[] = [];
 
@@ -126,44 +163,7 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
             const allMatches = matchesResult.value;
             
             const resolvedMatches = await Promise.all(
-                allMatches.map(async (m) => {
-                    const matchIdStr = m.uri ? m.uri.split("/").pop() : String(m.id);
-                    if (!matchIdStr) return { m, hasTeam: false, table: "Unknown" };
-                    
-                    try {
-                        const [tA, tB, compTable, matchRound] = await Promise.all([
-                            m.link("teamA") ? matchesService.getMatchTeamA(matchIdStr).catch(() => null) : Promise.resolve(null),
-                            m.link("teamB") ? matchesService.getMatchTeamB(matchIdStr).catch(() => null) : Promise.resolve(null),
-                            m.link("competitionTable") ? matchesService.getMatchCompetitionTable(matchIdStr).catch(() => null) : Promise.resolve(null),
-                            m.link("round") ? matchesService.getMatchRound(matchIdStr).catch(() => null) : Promise.resolve(null)
-                        ]);
-                        
-                        const idA = tA?.id ? String(tA.id) : undefined;
-                        const idB = tB?.id ? String(tB.id) : undefined;
-                        const targetId = String(id);
-                        
-                        const hasTeam = idA === targetId || idB === targetId;
-                        let opponent: string | undefined;
-                        
-                        if (hasTeam) {
-                            if (idA === targetId) {
-                                opponent = tB?.name ?? tB?.id ?? "Unknown Team";
-                            } else {
-                                opponent = tA?.name ?? tA?.id ?? "Unknown Team";
-                            }
-                        }
-                        
-                        const tableId = compTable?.uri ? compTable.uri.split("/").pop() : "Unknown";
-                        let roundStr: string | undefined;
-                        if (matchRound) {
-                            roundStr = matchRound.number !== undefined ? `Round ${matchRound.number}` : undefined;
-                        }
-                        
-                        return { m, hasTeam, table: tableId ?? "Unknown", opponent, round: roundStr };
-                    } catch {
-                        return { m, hasTeam: false, table: "Unknown" };
-                    }
-                })
+                allMatches.map((m) => resolveMatchForTeam(m, String(id), matchesService))
             );
             
             teamMatchesData = resolvedMatches.filter(r => r.hasTeam).map(r => ({
@@ -172,7 +172,6 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
                 opponent: r.opponent,
                 round: r.round
             }));
-            matches = teamMatchesData.map(r => r.match);
         } else {
             scientificProjectsError = parseErrorMessage(matchesResult.reason);
         }
@@ -227,7 +226,7 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
                 startTime: sp.startTime,
                 eventType: "Scientific Project",
                 location: sp.room ? `Room ${sp.room}` : "Unknown Room",
-                status: sp.score !== undefined ? "Completed" : "Pending",
+                status: sp.score === undefined ? "Pending" : "Completed",
             });
         }
     });
