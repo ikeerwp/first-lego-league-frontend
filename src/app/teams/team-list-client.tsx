@@ -11,7 +11,7 @@ export interface TeamListItem {
     readonly name: string;
     readonly category?: string;
     readonly city?: string;
-    readonly educationalCenter?: string;
+    readonly educationalCenter?: string | null;
     readonly foundationYear?: number;
     readonly inscriptionDate?: string;
 }
