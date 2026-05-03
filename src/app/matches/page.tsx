@@ -230,7 +230,7 @@ export default async function MatchesPage({ searchParams }: Readonly<{ searchPar
                                 href={buildViewUrl("list")}
                                 className={cn(
                                     "px-3 py-1.5 text-sm font-medium rounded-sm transition-colors",
-                                    !isCalendarView ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                                    isCalendarView ? "text-muted-foreground hover:text-foreground" : "bg-background text-foreground shadow-sm"
                                 )}
                             >
                                 List
