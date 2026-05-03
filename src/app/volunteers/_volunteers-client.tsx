@@ -93,11 +93,20 @@ function VolunteerSection({
                                 </div>
 
                                 {isAdmin && (
-                                    <Link 
-                                        href={`/volunteers/${id}?edit=true`}
-                                        className={buttonVariants({ variant: "default", size: "sm" })}>
-                                        ✏️ edit
-                                    </Link>
+                                    <div className="flex gap-2">
+                                        <Link
+                                            href={`/volunteers/${id}?edit=true`}
+                                            className={buttonVariants({ variant: "default", size: "sm" })}>
+                                            ✏️ edit
+                                        </Link>
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            onClick={() => v.name && v.uri && onDeleteRequest({ name: v.name, uri: v.uri })}
+                                        >
+                                            🗑️ delete
+                                        </Button>
+                                    </div>
                                 )}
                             </li>
                         );
@@ -114,14 +123,47 @@ export default function VolunteersClient({
     floaters,
     isAdmin
 }: Readonly<VolunteersClientProps>) {
-    const [selected, setSelected] = useState<{ name: string; uri: string } | null>(null);
+    const [selectedForDelete, setSelectedForDelete] = useState<{ name: string; uri: string } | null>(null);
     const router = useRouter();
 
     return (
         <div className="space-y-12">
-            <VolunteerSection title="Judges" typePlural="judges" volunteers={judges} emptyMessage="No judges available" isAdmin={isAdmin} />
-            <VolunteerSection title="Referees" typePlural="referees" volunteers={referees} emptyMessage="No referees available" isAdmin={isAdmin} />
-            <VolunteerSection title="Floaters" typePlural="floaters" volunteers={floaters} emptyMessage="No floaters available" isAdmin={isAdmin} />
+            <VolunteerSection
+                title="Judges"
+                typePlural="judges"
+                volunteers={judges}
+                emptyMessage="No judges available"
+                isAdmin={isAdmin}
+                onDeleteRequest={setSelectedForDelete}
+            />
+            <VolunteerSection
+                title="Referees"
+                typePlural="referees"
+                volunteers={referees}
+                emptyMessage="No referees available"
+                isAdmin={isAdmin}
+                onDeleteRequest={setSelectedForDelete}
+            />
+            <VolunteerSection
+                title="Floaters"
+                typePlural="floaters"
+                volunteers={floaters}
+                emptyMessage="No floaters available"
+                isAdmin={isAdmin}
+                onDeleteRequest={setSelectedForDelete}
+            />
+
+            {/* The Dialog Component */}
+            {selectedForDelete && (
+                <DeleteVolunteerDialog
+                    volunteer={selectedForDelete}
+                    onCancel={() => setSelectedForDelete(null)}
+                    onSuccess={() => {
+                        setSelectedForDelete(null);
+                        router.refresh();
+                    }}
+                />
+            )}
         </div>
     );
 }
