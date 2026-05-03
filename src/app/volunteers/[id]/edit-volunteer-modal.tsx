@@ -110,10 +110,11 @@ export default function EditVolunteerModal({ volunteer, updateAction }: Readonly
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 ml-1">
+                        <label htmlFor="volunteer-email" className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 ml-1">
                             Email Address
                         </label>
                         <input
+                            id="volunteer-email"
                             className="w-full border rounded-lg px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                             value={formData.emailAddress}
                             onChange={e => setFormData({ ...formData, emailAddress: e.target.value })}
@@ -124,11 +125,12 @@ export default function EditVolunteerModal({ volunteer, updateAction }: Readonly
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 ml-1">
+                        <label htmlFor="volunteer-phone" className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 ml-1">
                             Phone Number
                         </label>
                         <div className="flex space-x-2">
                             <select
+                                id="volunteer-country-code"
                                 className="w-32 border rounded-lg px-2 py-2 bg-zinc-50 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-sm"
                                 value={formData.countryCode}
                                 onChange={e => setFormData({ ...formData, countryCode: e.target.value })}
@@ -138,6 +140,7 @@ export default function EditVolunteerModal({ volunteer, updateAction }: Readonly
                                 ))}
                             </select>
                             <input
+                                id="volunteer-phone"
                                 className="flex-1 border rounded-lg px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                                 value={formData.phoneNumber}
                                 onChange={handlePhoneChange}

@@ -93,7 +93,6 @@ function VolunteerSection({
                                 </div>
 
                                 {isAdmin && (
-                                    /* Contenedor horizontal para los botones */
                                     <div className="flex items-center gap-2">
                                         <Link
                                             href={`/volunteers/${id}?edit=true`}

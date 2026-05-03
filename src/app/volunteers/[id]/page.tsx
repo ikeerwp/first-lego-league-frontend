@@ -9,7 +9,6 @@ import { User } from "@/types/user";
 import { parseErrorMessage } from "@/types/errors";
 import { isAdmin } from "@/lib/authz";
 
-type AuthenticatedUser = User & { roles?: string[] };
 
 interface Props {
     params: Promise<{ id: string }>;
@@ -21,8 +20,8 @@ export default async function VolunteerDetailPage(props: Readonly<Props>) {
     const usersService = new UsersService(serverAuthProvider);
     const volunteerService = new VolunteersService(serverAuthProvider);
 
-    const currentUser = await usersService.getCurrentUser() as AuthenticatedUser | null;
-    const userIsAdmin = currentUser?.username === 'admin' || currentUser?.roles?.includes('ADMIN') || false;
+    const currentUser = await usersService.getCurrentUser();
+    const userIsAdmin = isAdmin(currentUser);
 
     let volunteer: Volunteer | null = null;
     try {

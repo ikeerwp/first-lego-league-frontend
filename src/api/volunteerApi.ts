@@ -42,12 +42,12 @@ export class VolunteersService {
             phoneNumber: data.phoneNumber,
         };
         const isExpertType = data.type === 'Judge' || data.type === 'Referee';
-    
-    if (isExpertType && typeof data.expert === 'boolean') {
-        payload.expert = data.expert;
-    }
 
-    await patchHal(uri, payload, this.authStrategy);
+        if (isExpertType && typeof data.expert === 'boolean') {
+            payload.expert = data.expert;
+        }
+
+        await patchHal(uri, payload, this.authStrategy);
     }
 
     async deleteVolunteer(uri: string): Promise<void> {
