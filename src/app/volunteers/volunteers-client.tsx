@@ -37,7 +37,9 @@ interface VolunteerSectionProps {
 function filterByName(volunteers: VolunteerItem[], query: string): VolunteerItem[] {
     const q = query.trim().toLowerCase();
     if (!q) return volunteers;
-    return volunteers.filter(v => v.name?.toLowerCase().includes(q));
+    return volunteers.filter(v =>
+        v.name?.toLowerCase().includes(q) || v.emailAddress?.toLowerCase().includes(q)
+    );
 }
 
 function VolunteerSection({
