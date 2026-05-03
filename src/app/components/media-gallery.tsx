@@ -244,6 +244,8 @@ function CarouselSection({ items, startIndex, onOpen }: { readonly items: MediaI
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
+type MediaFilter = "all" | "photo" | "video";
+
 interface MediaGalleryProps {
     readonly mediaContents: MediaItem[];
 }
@@ -251,24 +253,66 @@ interface MediaGalleryProps {
 export function MediaGallery({ mediaContents }: MediaGalleryProps) {
     const [open, setOpen] = useState(false);
     const [activeIndex, setActiveIndex] = useState(0);
+    const [filter, setFilter] = useState<MediaFilter>("all");
+
+    const filtered = mediaContents.filter((item) => {
+        if (filter === "photo") return isImage(item.type);
+        if (filter === "video") return isVideo(item.type) || getYouTubeId(item.url) !== null;
+        return true;
+    });
 
     function openLightbox(index: number) {
         setActiveIndex(index);
         setOpen(true);
     }
 
-    function prev() { setActiveIndex((i) => (i - 1 + mediaContents.length) % mediaContents.length); }
-    function next() { setActiveIndex((i) => (i + 1) % mediaContents.length); }
+    function changeFilter(f: MediaFilter) {
+        setFilter(f);
+        setActiveIndex(0);
+    }
 
-    const hero = mediaContents[0];
-    const gridItems = mediaContents.slice(1, 5);
-    const rowItems = mediaContents.slice(5, 8);
-    const carouselItems = mediaContents.slice(8);
+    function prev() { setActiveIndex((i) => (i - 1 + filtered.length) % filtered.length); }
+    function next() { setActiveIndex((i) => (i + 1) % filtered.length); }
 
-    const activeItem = mediaContents[activeIndex];
+    const hasPhotos = mediaContents.some((item) => isImage(item.type));
+    const hasVideos = mediaContents.some((item) => isVideo(item.type) || getYouTubeId(item.url) !== null);
+    const showFilters = hasPhotos && hasVideos;
+
+    const hero = filtered[0];
+    const gridItems = filtered.slice(1, 5);
+    const rowItems = filtered.slice(5, 8);
+    const carouselItems = filtered.slice(8);
+
+    const activeItem = filtered[activeIndex];
+
+    const filterOptions: { label: string; value: MediaFilter }[] = [
+        { label: "All", value: "all" },
+        { label: "Photos", value: "photo" },
+        { label: "Videos", value: "video" },
+    ];
 
     return (
         <div className="flex flex-col gap-3">
+            {/* Filter pills */}
+            {showFilters && (
+                <div className="flex gap-2">
+                    {filterOptions.map(({ label, value }) => (
+                        <button
+                            key={value}
+                            type="button"
+                            onClick={() => changeFilter(value)}
+                            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                                filter === value
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-secondary text-muted-foreground hover:text-foreground"
+                            }`}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
+            )}
+
             {/* Hero */}
             {hero && <HeroSection item={hero} index={0} onOpen={openLightbox} />}
 
@@ -281,6 +325,13 @@ export function MediaGallery({ mediaContents }: MediaGalleryProps) {
             {/* Carousel for the rest */}
             {carouselItems.length > 0 && <CarouselSection items={carouselItems} startIndex={8} onOpen={openLightbox} />}
 
+            {/* Empty state when filter yields no results */}
+            {filtered.length === 0 && (
+                <div className="flex h-32 items-center justify-center rounded-xl border border-border text-sm text-muted-foreground">
+                    No {filter === "photo" ? "photos" : "videos"} in this edition.
+                </div>
+            )}
+
             {/* Lightbox */}
             <Dialog.Root open={open} onOpenChange={setOpen}>
                 <Dialog.Portal>
@@ -289,14 +340,14 @@ export function MediaGallery({ mediaContents }: MediaGalleryProps) {
                         <Dialog.Title className="sr-only">Media viewer</Dialog.Title>
 
                         <div className="mb-4 flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">{activeIndex + 1} / {mediaContents.length}</span>
+                            <span className="text-sm text-muted-foreground">{activeIndex + 1} / {filtered.length}</span>
                             <Dialog.Close aria-label="Close media viewer" className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
                                 <X className="h-5 w-5" />
                             </Dialog.Close>
                         </div>
 
                         <div className="flex items-center gap-3">
-                            {mediaContents.length > 1 && (
+                            {filtered.length > 1 && (
                                 <button type="button" onClick={prev} aria-label="Previous" className="flex-none rounded-full border border-border bg-background p-2 shadow-sm transition-colors hover:bg-secondary">
                                     <ChevronLeft className="h-5 w-5" />
                                 </button>
@@ -304,16 +355,16 @@ export function MediaGallery({ mediaContents }: MediaGalleryProps) {
                             <div className="flex-1">
                                 {activeItem && <LightboxContent item={activeItem} index={activeIndex} />}
                             </div>
-                            {mediaContents.length > 1 && (
+                            {filtered.length > 1 && (
                                 <button type="button" onClick={next} aria-label="Next" className="flex-none rounded-full border border-border bg-background p-2 shadow-sm transition-colors hover:bg-secondary">
                                     <ChevronRight className="h-5 w-5" />
                                 </button>
                             )}
                         </div>
 
-                        {mediaContents.length > 1 && (
+                        {filtered.length > 1 && (
                             <div className="mt-5 flex justify-center gap-1.5">
-                                {mediaContents.map((item, i) => (
+                                {filtered.map((item, i) => (
                                     <button type="button" key={item.uri ?? item.id ?? item.url ?? String(i)} onClick={() => setActiveIndex(i)} aria-label={`Go to ${i + 1}`}
                                         className={`h-1.5 rounded-full transition-all ${i === activeIndex ? "w-4 bg-primary" : "w-1.5 bg-border hover:bg-muted-foreground"}`} />
                                 ))}
