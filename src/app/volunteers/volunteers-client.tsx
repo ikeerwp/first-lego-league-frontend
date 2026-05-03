@@ -6,6 +6,7 @@ import { Button } from '@/app/components/button';
 import { VolunteerRole } from '@/types/volunteer';
 import { useState } from 'react';
 import Link from 'next/link';
+import { buttonVariants } from '@/app/components/button';
 import { useRouter } from 'next/navigation';
 import { DeleteVolunteerDialog } from './delete-volunteer-dialog';
 
@@ -14,6 +15,7 @@ export interface VolunteerItem {
     emailAddress?: string;
     type?: VolunteerRole;
     uri?: string;
+    expert?: boolean;
 }
 
 interface VolunteersClientProps {
@@ -68,29 +70,46 @@ function VolunteerSection({
                         const id = v.uri ? encodeURIComponent(v.uri) : `unknown-${idx}`;
 
                         return (
-                            <li key={id} className="list-card pl-7 flex justify-between items-start">
+                            <li key={id} className="list-card pl-7 flex items-center justify-between">
                                 <div>
                                     <div className="list-kicker">{v.type}</div>
+                                    <div className="flex items-center gap-2">
+                                        <Link href={`/volunteers/${id}`}>
+                                            <span className="list-title font-medium hover:underline cursor-pointer">
+                                                {v.name || 'Unknown'}
+                                            </span>
+                                        </Link>
 
-                                    <Link href={`/volunteers/${id}`}>
-                                        <div className="list-title font-medium hover:underline cursor-pointer">
-                                            {v.name || 'Unknown'}
-                                        </div>
-                                    </Link>
+                                        {v.expert && (
+                                            <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-amber-200">
+                                                Expert
+                                            </span>
+                                        )}
+                                    </div>
 
                                     {v.emailAddress && (
                                         <div className="list-support">{v.emailAddress}</div>
                                     )}
                                 </div>
 
-                                {isAdmin && v.uri && (
-                                    <Button
-                                        variant="destructive"
-                                        size="sm"
-                                        onClick={() => onDeleteRequest({ name: v.name || "Unknown", uri: v.uri! })}
-                                    >
-                                        Delete
-                                    </Button>
+                                {isAdmin && (
+                                    <div className="flex items-center gap-2">
+                                        <Link
+                                            href={`/volunteers/${id}?edit=true`}
+                                            className={buttonVariants({ variant: "outline", size: "sm" })}
+                                            aria-label={`Edit ${v.expert ? 'Expert ' : ''}${v.name ?? 'volunteer'}`}
+                                        >
+                                            Edit
+                                        </Link>
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            onClick={() => v.name && v.uri && onDeleteRequest({ name: v.name, uri: v.uri })}
+                                            aria-label={`Delete ${v.name ?? 'volunteer'}`}
+                                        >
+                                            Delete
+                                        </Button>
+                                    </div>
                                 )}
                             </li>
                         );
@@ -105,9 +124,9 @@ export default function VolunteersClient({
     judges,
     referees,
     floaters,
-    isAdmin,
+    isAdmin
 }: Readonly<VolunteersClientProps>) {
-    const [selected, setSelected] = useState<{ name: string; uri: string } | null>(null);
+    const [selectedForDelete, setSelectedForDelete] = useState<{ name: string; uri: string } | null>(null);
     const router = useRouter();
 
     return (
@@ -118,7 +137,7 @@ export default function VolunteersClient({
                 volunteers={judges}
                 emptyMessage="No judges available"
                 isAdmin={isAdmin}
-                onDeleteRequest={setSelected}
+                onDeleteRequest={setSelectedForDelete}
             />
             <VolunteerSection
                 title="Referees"
@@ -126,7 +145,7 @@ export default function VolunteersClient({
                 volunteers={referees}
                 emptyMessage="No referees available"
                 isAdmin={isAdmin}
-                onDeleteRequest={setSelected}
+                onDeleteRequest={setSelectedForDelete}
             />
             <VolunteerSection
                 title="Floaters"
@@ -134,15 +153,16 @@ export default function VolunteersClient({
                 volunteers={floaters}
                 emptyMessage="No floaters available"
                 isAdmin={isAdmin}
-                onDeleteRequest={setSelected}
+                onDeleteRequest={setSelectedForDelete}
             />
 
-            {selected && (
+            {/* The Dialog Component */}
+            {selectedForDelete && (
                 <DeleteVolunteerDialog
-                    volunteer={selected}
-                    onCancel={() => setSelected(null)}
+                    volunteer={selectedForDelete}
+                    onCancel={() => setSelectedForDelete(null)}
                     onSuccess={() => {
-                        setSelected(null);
+                        setSelectedForDelete(null);
                         router.refresh();
                     }}
                 />

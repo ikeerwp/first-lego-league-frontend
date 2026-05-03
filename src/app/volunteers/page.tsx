@@ -6,35 +6,38 @@ import { serverAuthProvider } from "@/lib/authProvider";
 import { parseErrorMessage } from "@/types/errors";
 import { Volunteer } from "@/types/volunteer";
 import { isAdmin } from "@/lib/authz";
-import VolunteersClient, { VolunteerItem } from "./_volunteers-client";
+import VolunteersClient, { VolunteerItem } from "./volunteers-client";
+
 
 function toVolunteerItem(v: Volunteer): VolunteerItem {
     return {
         name: v.name,
         emailAddress: v.emailAddress,
         type: v.type,
-        uri: v.uri
+        uri: v.uri,
+        expert: v.expert
     };
 }
 
 export default async function VolunteersPage() {
     const service = new VolunteersService(serverAuthProvider);
-    const userService = new UsersService(serverAuthProvider);
+    const usersService = new UsersService(serverAuthProvider);
 
     let judges: VolunteerItem[] = [];
     let referees: VolunteerItem[] = [];
     let floaters: VolunteerItem[] = [];
     let error: string | null = null;
-    let isUserAdmin = false;
+    let userIsAdmin = false;
 
     try {
-        const currentUser = await userService.getCurrentUser();
-        isUserAdmin = isAdmin(currentUser);
+        const currentUser = await usersService.getCurrentUser();
+        userIsAdmin = isAdmin(currentUser);
 
         const data = await service.getVolunteers();
         judges = data.judges.map(toVolunteerItem);
         referees = data.referees.map(toVolunteerItem);
         floaters = data.floaters.map(toVolunteerItem);
+        
     } catch (e) {
         console.error("Failed to fetch volunteers:", e);
         error = parseErrorMessage(e);
@@ -54,7 +57,7 @@ export default async function VolunteersPage() {
                         judges={judges}
                         referees={referees}
                         floaters={floaters}
-                        isAdmin={isUserAdmin}
+                        isAdmin={userIsAdmin}
                     />
                 )}
             </div>
