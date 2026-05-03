@@ -93,18 +93,20 @@ function VolunteerSection({
                                 </div>
 
                                 {isAdmin && (
-                                    <div className="flex gap-2">
+                                    <div className="flex items-center gap-2">
                                         <Link
                                             href={`/volunteers/${id}?edit=true`}
-                                            className={buttonVariants({ variant: "default", size: "sm" })}>
-                                            ✏️ edit
+                                            className={buttonVariants({ variant: "outline", size: "sm" })}
+                                        >
+                                            Edit
                                         </Link>
+
                                         <Button
                                             variant="destructive"
                                             size="sm"
                                             onClick={() => v.name && v.uri && onDeleteRequest({ name: v.name, uri: v.uri })}
                                         >
-                                            🗑️ delete
+                                            Delete
                                         </Button>
                                     </div>
                                 )}
