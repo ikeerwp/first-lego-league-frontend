@@ -6,7 +6,6 @@ import { serverAuthProvider } from "@/lib/authProvider";
 import { parseErrorMessage } from "@/types/errors";
 import { Volunteer } from "@/types/volunteer";
 import { User } from "@/types/user";
-import { isAdmin } from "@/lib/authz";
 import VolunteersClient, { VolunteerItem } from "./volunteers-client";
 
 type AuthenticatedUser = User & {
@@ -35,16 +34,11 @@ export default async function VolunteersPage() {
     let userIsAdmin = false;
 
     try {
-        const token = await serverAuthProvider.getAuth();
-        
-        if (token) {
-            const currentUser = await usersService.getCurrentUser() as AuthenticatedUser | null;
-          
-            userIsAdmin = Boolean(
-                currentUser?.username === 'admin' || 
-                currentUser?.roles?.includes('ADMIN')
-            );
-        }
+        const currentUser = await usersService.getCurrentUser() as AuthenticatedUser | null;
+        userIsAdmin = Boolean(
+            currentUser?.username === "admin" ||
+            currentUser?.roles?.includes("ADMIN")
+        );
 
         const data = await service.getVolunteers();
         judges = data.judges.map(toVolunteerItem);

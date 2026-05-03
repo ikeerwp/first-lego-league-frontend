@@ -80,7 +80,7 @@ function VolunteerSection({
                                             </span>
                                         </Link>
 
-                                        {v.type === 'Judge' && v.expert && (
+                                        {v.expert && (
                                             <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-amber-200">
                                                 Expert
                                             </span>
@@ -93,18 +93,20 @@ function VolunteerSection({
                                 </div>
 
                                 {isAdmin && (
+                                    /* Contenedor horizontal para los botones */
                                     <div className="flex items-center gap-2">
                                         <Link
                                             href={`/volunteers/${id}?edit=true`}
                                             className={buttonVariants({ variant: "outline", size: "sm" })}
+                                            aria-label={`Edit ${v.expert ? 'Expert ' : ''}${v.name ?? 'volunteer'}`}
                                         >
                                             Edit
                                         </Link>
-
                                         <Button
                                             variant="destructive"
                                             size="sm"
                                             onClick={() => v.name && v.uri && onDeleteRequest({ name: v.name, uri: v.uri })}
+                                            aria-label={`Delete ${v.name ?? 'volunteer'}`}
                                         >
                                             Delete
                                         </Button>

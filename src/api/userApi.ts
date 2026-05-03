@@ -12,7 +12,7 @@ export type CreateUserPayload = {
 };
 
 export class UsersService {
-    constructor(private readonly authStrategy: AuthStrategy) {}
+    constructor(private readonly authStrategy: AuthStrategy) { }
 
     async getUsers(): Promise<User[]> {
         return fetchHalCollection<User>('/users', this.authStrategy, 'users');
@@ -32,8 +32,11 @@ export class UsersService {
         if (!auth) return null;
         try {
             return await fetchHalResource<User>('/identity', this.authStrategy);
-        } catch {
-            return null;
+        } catch (error: any) {
+            if (error?.statusCode === 401) {
+                return null;
+            }
+            throw error;
         }
     }
 

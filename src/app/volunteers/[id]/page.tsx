@@ -6,6 +6,8 @@ import EditVolunteerModal from "./edit-volunteer-modal";
 import EmptyState from "@/app/components/empty-state";
 import { Volunteer } from "@/types/volunteer";
 import { User } from "@/types/user";
+import { parseErrorMessage } from "@/types/errors";
+import { isAdmin } from "@/lib/authz";
 
 type AuthenticatedUser = User & { roles?: string[] };
 
@@ -29,24 +31,22 @@ export default async function VolunteerDetailPage(props: Readonly<Props>) {
         volunteer = all.find(v => v.uri === decodeURIComponent(id)) ?? null;
     } catch (e) { console.error(e); }
 
-    async function updateVolunteerData(uri: string, data: Partial<Volunteer>) {
+       async function updateVolunteerData(uri: string, data: Partial<Volunteer>) {
         'use server';
-        const auth = new UsersService(serverAuthProvider);
-        const user = await auth.getCurrentUser() as AuthenticatedUser | null;
-        if (!(user?.username === 'admin' || user?.roles?.includes('ADMIN'))) {
-            return { success: false, error: "Access denied" };
+
+        const user = await new UsersService(serverAuthProvider).getCurrentUser();
+        if (!isAdmin(user)) {
+            return { success: false, error: "Access denied: You are not an administrator" };
         }
+
         try {
-            const service = new VolunteersService(serverAuthProvider);
-            await service.updateVolunteer(uri, data);
+            await new VolunteersService(serverAuthProvider).updateVolunteer(uri, data);
             revalidatePath('/volunteers');
-            revalidatePath(`/volunteers/${encodeURIComponent(uri)}`);
             return { success: true };
         } catch (e) {
-            return { success: false, error: e instanceof Error ? e.message : "Unknown error" };
+            return { success: false, error: parseErrorMessage(e) };
         }
     }
-
     if (!volunteer) return <EmptyState title="Not found" />;
 
     return (
@@ -65,6 +65,7 @@ export default async function VolunteerDetailPage(props: Readonly<Props>) {
                         <p><strong>Role:</strong> {volunteer.type}</p>
                         <p><strong>Email:</strong> {volunteer.emailAddress || "—"}</p>
                         <p><strong>Phone:</strong> {volunteer.phoneNumber || "—"}</p>
+                        <p><strong>Expert:</strong> {volunteer.expert ? "Yes" : "No"}</p>
                     </div>
 
                     {volunteer.type === "Judge" && (

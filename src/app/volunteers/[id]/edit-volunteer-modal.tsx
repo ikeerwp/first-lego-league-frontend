@@ -32,7 +32,6 @@ export default function EditVolunteerModal({ volunteer, updateAction }: Readonly
 
     const [formData, setFormData] = useState(() => {
         const fullPhone = volunteer?.phoneNumber || '';
-        // Buscamos si el teléfono empieza por alguno de nuestros prefijos
         const foundCountry = COUNTRY_CODES.find(c => fullPhone.startsWith(c.code));
 
         return {
@@ -61,6 +60,7 @@ export default function EditVolunteerModal({ volunteer, updateAction }: Readonly
         try {
             const finalData = {
                 ...formData,
+                type: volunteer.type,
                 phoneNumber: `${formData.countryCode}${formData.phoneNumber}`
             };
 
@@ -93,10 +93,14 @@ export default function EditVolunteerModal({ volunteer, updateAction }: Readonly
 
                 <form onSubmit={handleSubmit} className="space-y-5">
                     <div className="space-y-1">
-                        <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 ml-1">
+                        <label
+                            htmlFor="volunteer-name"
+                            className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 ml-1"
+                        >
                             Full Name
                         </label>
                         <input
+                            id="volunteer-name"
                             className="w-full border rounded-lg px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                             value={formData.name}
                             onChange={e => setFormData({ ...formData, name: e.target.value })}
@@ -140,11 +144,12 @@ export default function EditVolunteerModal({ volunteer, updateAction }: Readonly
                                 placeholder="600123456"
                                 type="tel"
                                 inputMode="numeric"
+                                maxLength={15}
                             />
                         </div>
                     </div>
 
-                    {volunteer.type === 'Judge' && (
+                    {(volunteer.type === 'Judge' || volunteer.type === 'Referee') && (
                         <div className="pt-2">
                             <label className="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                                 <input
@@ -153,7 +158,7 @@ export default function EditVolunteerModal({ volunteer, updateAction }: Readonly
                                     onChange={e => setFormData({ ...formData, expert: e.target.checked })}
                                     className="h-5 w-5 rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
                                 />
-                                <span className="text-sm font-medium">Is Expert Judge</span>
+                                <span className="text-sm font-medium">Is Expert {volunteer.type}</span>
                             </label>
                         </div>
                     )}

@@ -10,7 +10,7 @@ type RawVolunteer = {
     expert?: boolean;
 };
 export class VolunteersService {
-    constructor(private readonly authStrategy: AuthStrategy) {}
+    constructor(private readonly authStrategy: AuthStrategy) { }
 
     async getVolunteers(): Promise<{ judges: Volunteer[], referees: Volunteer[], floaters: Volunteer[] }> {
         const [judges, referees, floaters] = await Promise.all([
@@ -36,13 +36,18 @@ export class VolunteersService {
     }
 
     async updateVolunteer(uri: string, data: Partial<Volunteer>): Promise<void> {
-        const payload = {
+        const payload: Partial<RawVolunteer> = {
             name: data.name,
             emailAddress: data.emailAddress,
             phoneNumber: data.phoneNumber,
-            expert: data.expert 
         };
-        await patchHal(uri, payload, this.authStrategy);
+        const isExpertType = data.type === 'Judge' || data.type === 'Referee';
+    
+    if (isExpertType && typeof data.expert === 'boolean') {
+        payload.expert = data.expert;
+    }
+
+    await patchHal(uri, payload, this.authStrategy);
     }
 
     async deleteVolunteer(uri: string): Promise<void> {
