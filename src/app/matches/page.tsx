@@ -114,6 +114,7 @@ export default async function MatchesPage({ searchParams }: Readonly<{ searchPar
     let result: HalPage<Match> = { items: [], hasNext: false, hasPrev: false, currentPage: 0 };
     let error: string | null = null;
     let currentUser: User | null = null;
+    let editionId: string | null = null;
 
     try {
         currentUser = await new UsersService(serverAuthProvider).getCurrentUser();
@@ -127,6 +128,7 @@ export default async function MatchesPage({ searchParams }: Readonly<{ searchPar
         if (year) {
             const editionsService = new EditionsService(serverAuthProvider);
             const edition = await editionsService.getEditionByYear(year);
+            editionId = getEncodedResourceId(edition?.uri ?? edition?.link("self")?.href);
 
             if (edition?.uri) {
                 const response = await service.getMatchesByEdition(edition.uri + "/matches");
@@ -203,9 +205,19 @@ export default async function MatchesPage({ searchParams }: Readonly<{ searchPar
             ) : undefined}
         >
             <div className="space-y-6">
-                <div className="space-y-3">
-                    <div className="page-eyebrow">Live listing</div>
-                    <h2 className="section-title">Match schedule</h2>
+                <div className="flex items-end justify-between gap-4">
+                    <div className="space-y-3">
+                        <div className="page-eyebrow">Live listing</div>
+                        <h2 className="section-title">Match schedule</h2>
+                    </div>
+                    {editionId && (
+                        <Link
+                            href={`/editions/${editionId}/competition-tables`}
+                            className={buttonVariants({ variant: "outline", size: "sm" })}
+                        >
+                            Competition Tables
+                        </Link>
+                    )}
                 </div>
 
                 {error && <ErrorAlert message={error} />}

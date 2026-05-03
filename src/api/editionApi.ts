@@ -3,7 +3,9 @@ import { Edition } from "@/types/edition";
 import type { HalPage } from "@/types/pagination";
 import { Team } from "@/types/team";
 
-import { createHalResource, fetchHalCollection, fetchHalPagedCollection, fetchHalResource, updateHalResource } from "./halClient";
+import { API_BASE_URL, createHalResource, fetchHalCollection, fetchHalPagedCollection, fetchHalResource, updateHalResource } from "./halClient";
+import type { EditionCompetitionTable } from "@/types/competitionTableSchedule";
+import { ApiError } from "@/types/errors";
 
 export type CreateEditionPayload = {
     year: number;
@@ -60,6 +62,14 @@ export class EditionsService {
         return editions.length > 0 ? editions[0] : null;
     }
 
+    async getEditionsByVenueName(venueName: string): Promise<Edition[]> {
+        return fetchHalCollection<Edition>(
+            `/editions/search/findByVenueName?venueName=${encodeURIComponent(venueName)}`,
+            this.authStrategy,
+            'editions'
+        );
+    }
+
     async getEditionTeams(id: string): Promise<Team[]> {
         const editionId = encodeURIComponent(id);
         return fetchHalCollection<Team>(`/editions/${editionId}/teams`, this.authStrategy, 'teams');
@@ -73,4 +83,38 @@ export class EditionsService {
         const editionId = encodeURIComponent(id);
         return updateHalResource<Edition>(`/editions/${editionId}`, data, this.authStrategy, "edition");
     }
+
+    async getEditionCompetitionTables(id: string): Promise<EditionCompetitionTable[]> {
+        const encodedId = encodeURIComponent(id);
+        const url = `${API_BASE_URL}/editions/${encodedId}/tables`;
+        const authorization = await this.authStrategy.getAuth();
+        const res = await fetch(url, {
+            headers: {
+                Accept: "application/json",
+                ...(authorization ? { Authorization: authorization } : {}),
+            },
+            cache: "no-store",
+        });
+        if (!res.ok) {
+            throw new ApiError(`Failed to fetch competition tables`, res.status, true);
+        }
+        return res.json() as Promise<EditionCompetitionTable[]>;
+    }
+
+    async deleteEdition(id: string): Promise<void> {
+    const editionId = encodeURIComponent(id);
+    const authorization = await this.authStrategy.getAuth();
+
+    const res = await fetch(`${API_BASE_URL}/editions/${editionId}`, {
+        method: "DELETE",
+        headers: {
+            ...(authorization ? { Authorization: authorization } : {}),
+        },
+        cache: "no-store",
+    });
+
+    if (!res.ok) {
+        throw new ApiError("Failed to delete edition", res.status, true);
+    }
+}
 }

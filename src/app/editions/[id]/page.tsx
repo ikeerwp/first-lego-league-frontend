@@ -1,18 +1,30 @@
 import { AwardsService } from "@/api/awardApi";
 import { EditionsService } from "@/api/editionApi";
+import { LeaderboardService } from "@/api/leaderboardApi";
+import { MediaService } from "@/api/mediaApi";
+import { UsersService } from "@/api/userApi";
+import { buttonVariants } from "@/app/components/button";
 import ErrorAlert from "@/app/components/error-alert";
 import EmptyState from "@/app/components/empty-state";
+import LeaderboardTable from "@/app/components/leaderboard-table";
+import { MediaItem } from "@/app/components/media-gallery";
+import { MediaSection } from "@/app/components/media-section";
 import { serverAuthProvider } from "@/lib/authProvider";
+import { isAdmin } from "@/lib/authz";
 import { getEncodedResourceId } from "@/lib/halRoute";
 import { Award } from "@/types/award";
 import { Edition } from "@/types/edition";
+import type { LeaderboardItem } from "@/types/leaderboard";
+import { MediaContent } from "@/types/mediaContent";
 import { Team } from "@/types/team";
+import { User } from "@/types/user";
 import { parseErrorMessage, NotFoundError } from "@/types/errors";
 import Link from "next/link";
-import { buttonVariants } from "@/app/components/button";
-import { isAdmin } from "@/lib/authz";
-import { User } from "@/types/user";
-import { UsersService } from "@/api/userApi";
+import { getTeamDisplayName } from "@/lib/teamUtils";
+import MediaUploadForm from "@/app/components/media-upload-form";
+import { redirect } from "next/navigation";
+import DeleteEditionButton from "./delete-edition-button";
+
 
 interface EditionDetailPageProps {
     readonly params: Promise<{ id: string }>;
@@ -72,6 +84,46 @@ function normalizeUri(resourceUri: string | null | undefined): string | null {
     return sanitizedUri.replace(/^https?:\/\/[^/]+/i, "");
 }
 
+interface EditionUriData {
+    awards: Award[];
+    mediaContents: MediaContent[];
+    awardsError: string | null;
+    mediaError: string | null;
+}
+
+async function fetchByEditionUri(
+    editionUri: string,
+    awardsService: AwardsService,
+    mediaService: MediaService,
+): Promise<EditionUriData> {
+    const result: EditionUriData = { awards: [], mediaContents: [], awardsError: null, mediaError: null };
+
+    try {
+        result.awards = await awardsService.getAwardsOfEdition(editionUri);
+    } catch (e) {
+        console.error("Failed to fetch awards:", e);
+        result.awardsError = parseErrorMessage(e);
+    }
+
+    try {
+        result.mediaContents = await mediaService.getMediaByEdition(editionUri);
+    } catch (e) {
+        console.error("Failed to fetch media:", e);
+        result.mediaError = parseErrorMessage(e);
+    }
+
+    return result;
+}
+
+function toMediaItem(content: MediaContent): MediaItem {
+    return {
+        uri: content.uri ?? content.link?.("self")?.href,
+        id: content.id,
+        type: content.type,
+        url: content.url ?? content.id,  // real API omits `url`; the `id` field holds the media URL
+    };
+}
+
 function getAwardsByTeamUri(awards: Award[]): Map<string, Award[]> {
     const awardsByTeamUri = new Map<string, Award[]>();
 
@@ -91,16 +143,28 @@ function getAwardsByTeamUri(awards: Award[]): Map<string, Award[]> {
 
 export default async function EditionDetailPage(props: Readonly<EditionDetailPageProps>) {
     const { id } = await props.params;
+
+    async function deleteEditionAction() {
+    "use server";
+
+    await new EditionsService(serverAuthProvider).deleteEdition(id);
+    redirect("/editions");
+}
     const editionsService = new EditionsService(serverAuthProvider);
     const awardsService = new AwardsService(serverAuthProvider);
+    const mediaService = new MediaService(serverAuthProvider);
 
     let currentUser: User | null = null;
     let edition: Edition | null = null;
     let teams: Team[] = [];
     let awards: Award[] = [];
+    let mediaContents: MediaContent[] = [];
+    let leaderboardItems: LeaderboardItem[] = [];
     let error: string | null = null;
     let teamsError: string | null = null;
     let awardsError: string | null = null;
+    let mediaError: string | null = null;
+    let classificationError: string | null = null;
 
     try {
         edition = await editionsService.getEditionById(id);
@@ -126,12 +190,15 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
         }
 
         if (edition.uri) {
-            try {
-                awards = await awardsService.getAwardsOfEdition(edition.uri);
-            } catch (e) {
-                console.error("Failed to fetch awards:", e);
-                awardsError = parseErrorMessage(e);
-            }
+            ({ awards, mediaContents, awardsError, mediaError } = await fetchByEditionUri(edition.uri, awardsService, mediaService));
+        }
+
+        try {
+            const data = await new LeaderboardService(serverAuthProvider).getEditionLeaderboard(id, 0, 100);
+            leaderboardItems = data.items;
+        } catch (e) {
+            console.error("Failed to fetch leaderboard:", e);
+            classificationError = parseErrorMessage(e);
         }
     }
 
@@ -153,10 +220,17 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
                         </div>
 
                         {currentUser && isAdmin(currentUser) && (
-                            <Link href={`/editions/${id}/edit`} className={buttonVariants({ variant: "default", size: "sm" })}>
+                        <div className="flex gap-2">
+                            <Link
+                                href={`/editions/${id}/edit`}
+                                className={buttonVariants({ variant: "default", size: "sm" })}
+                            >
                                 ✏️ edit
                             </Link>
-                        )}
+
+                            <DeleteEditionButton deleteAction={deleteEditionAction} />
+                        </div>
+                    )}
                     </div>
 
                     {error && (
@@ -188,26 +262,15 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
                                                 key={team.uri ?? index}
                                                 className="w-full rounded-lg border border-border bg-card p-4 shadow-sm transition hover:bg-secondary/30"
                                             >
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    {href ? (
-                                                        <Link href={href} className="font-medium text-foreground">
-                                                            {team.name ?? team.id ?? `Team ${index + 1}`}
-                                                        </Link>
-                                                    ) : (
-                                                        <span className="font-medium text-foreground">
-                                                            {team.name ?? team.id ?? `Team ${index + 1}`}
-                                                        </span>
-                                                    )}
-
-                                                    {teamAwards.map((award, awardIndex) => (
-                                                        <span
-                                                            key={award.uri ?? `${team.uri ?? index}-${awardIndex}`}
-                                                            className="inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-900"
-                                                        >
-                                                            {getAwardLabel(award, awardIndex)}
-                                                        </span>
-                                                    ))}
-                                                </div>
+                                                {href ? (
+                                                    <Link href={href} className="font-medium text-foreground">
+                                                        {getTeamDisplayName(team)}
+                                                    </Link>
+                                                ) : (
+                                                    <span className="font-medium text-foreground">
+                                                        {getTeamDisplayName(team)}
+                                                    </span>
+                                                )}
                                             </li>
                                         );
                                     })}
@@ -228,6 +291,42 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
                                     />
                                 </div>
                             )}
+
+                            <h2 className="mt-8 mb-4 text-xl font-semibold text-foreground">Final Classification</h2>
+
+                            {classificationError && <ErrorAlert message={classificationError} />}
+
+                            {!classificationError && leaderboardItems.length === 0 && (
+                                <EmptyState
+                                    title="No results yet"
+                                    description="Classification will appear once match results are recorded."
+                                />
+                            )}
+
+                            {!classificationError && leaderboardItems.length > 0 && (
+                                <LeaderboardTable items={leaderboardItems} />
+                            )}
+
+                            <section id="media-section">
+                                <h2 className="mt-8 mb-4 text-xl font-semibold text-foreground">Media Gallery</h2>
+
+                                {currentUser && isAdmin(currentUser) && edition && (
+                                    <MediaUploadForm editionId={id} />
+                                )}
+
+                                {mediaError && <ErrorAlert message={mediaError} />}
+
+                                {!mediaError && mediaContents.length > 0 && (
+                                    <MediaSection mediaContents={mediaContents.map(toMediaItem)} />
+                                )}
+
+                                {!mediaError && mediaContents.length === 0 && (
+                                    <EmptyState
+                                        title="No media found"
+                                        description="No media has been added to this edition yet."
+                                    />
+                                )}
+                            </section>
                         </>
                     )}
                 </div>

@@ -403,7 +403,7 @@ async function handlePullRequestCommentCreated({ github, context, core }) {
 	const comment = context.payload.comment;
 	const issue = context.payload.issue;
 
-	const commenter = comment.user?.login || "";
+	let commenter = comment.user?.login || "";
 	if (commenter.toLowerCase().endsWith("[bot]")) return;
 
 	const bodyTrim = (comment.body || "").trim();
@@ -423,6 +423,10 @@ async function handlePullRequestCommentCreated({ github, context, core }) {
 	// Check if PR has pr-not-ready label
 	const labels = pr.labels.map(l => l.name);
 	if (!labels.includes("pr-not-ready")) return;
+
+	if (commenter.toLowerCase() === instructorLogin().toLowerCase()) {
+		commenter = pr.user.login;
+	}
 
 	// Get closing issues
 	const q = `

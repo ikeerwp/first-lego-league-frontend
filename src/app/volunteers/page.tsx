@@ -6,6 +6,7 @@ import { serverAuthProvider } from "@/lib/authProvider";
 import { parseErrorMessage } from "@/types/errors";
 import { Volunteer } from "@/types/volunteer";
 import { User } from "@/types/user";
+import { isAdmin } from "@/lib/authz";
 import VolunteersClient, { VolunteerItem } from "./_volunteers-client";
 
 type AuthenticatedUser = User & {
@@ -37,10 +38,8 @@ export default async function VolunteersPage() {
         const token = await serverAuthProvider.getAuth();
         
         if (token) {
-            // 2. Casteo limpio al nuevo tipo
             const currentUser = await usersService.getCurrentUser() as AuthenticatedUser | null;
-            
-            // 3. CERO 'any' AQUÍ (Esto es lo que rompía tu línea 38 y 39)
+          
             userIsAdmin = Boolean(
                 currentUser?.username === 'admin' || 
                 currentUser?.roles?.includes('ADMIN')

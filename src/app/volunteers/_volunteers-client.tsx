@@ -2,10 +2,13 @@
 
 import EmptyState from '@/app/components/empty-state';
 import { Input } from '@/app/components/input';
+import { Button } from '@/app/components/button';
 import { VolunteerRole } from '@/types/volunteer';
 import { useState } from 'react';
 import Link from 'next/link';
 import { buttonVariants } from '@/app/components/button';
+import { useRouter } from 'next/navigation';
+import { DeleteVolunteerDialog } from './delete-volunteer-dialog';
 
 export interface VolunteerItem {
     name?: string;
@@ -28,6 +31,7 @@ interface VolunteerSectionProps {
     volunteers: VolunteerItem[];
     emptyMessage: string;
     isAdmin: boolean;
+    onDeleteRequest: (volunteer: { name: string; uri: string }) => void;
 }
 
 function filterByName(volunteers: VolunteerItem[], query: string): VolunteerItem[] {
@@ -41,7 +45,8 @@ function VolunteerSection({
     typePlural,
     volunteers,
     emptyMessage,
-    isAdmin
+    isAdmin,
+    onDeleteRequest,
 }: Readonly<VolunteerSectionProps>) {
     const [query, setQuery] = useState('');
     const filtered = filterByName(volunteers, query);
@@ -61,8 +66,8 @@ function VolunteerSection({
                 <EmptyState title={`No ${typePlural}`} description={emptyMessage} />
             ) : (
                 <ul className="list-grid">
-                    {filtered.map((v) => {
-                        const id = v.uri ? encodeURIComponent(v.uri) : '';
+                    {filtered.map((v, idx) => {
+                        const id = v.uri ? encodeURIComponent(v.uri) : `unknown-${idx}`;
 
                         return (
                             <li key={id} className="list-card pl-7 flex items-center justify-between">
@@ -109,6 +114,9 @@ export default function VolunteersClient({
     floaters,
     isAdmin
 }: Readonly<VolunteersClientProps>) {
+    const [selected, setSelected] = useState<{ name: string; uri: string } | null>(null);
+    const router = useRouter();
+
     return (
         <div className="space-y-12">
             <VolunteerSection title="Judges" typePlural="judges" volunteers={judges} emptyMessage="No judges available" isAdmin={isAdmin} />

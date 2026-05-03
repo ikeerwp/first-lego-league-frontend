@@ -7,6 +7,7 @@ import ErrorAlert from "@/app/components/error-alert";
 import PageShell from "@/app/components/page-shell";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { isAdmin, isReferee } from "@/lib/authz";
+import { getTeamDisplayName } from "@/lib/teamUtils";
 import { getEncodedResourceId } from "@/lib/halRoute";
 import { formatMatchTime } from "@/lib/matchUtils";
 import { Edition } from "@/types/edition";
@@ -106,7 +107,7 @@ function TeamCard({ team, label, yearQuery }: Readonly<{ team: Team; label: stri
             className={`module-card flex flex-col gap-2 rounded-lg border border-border bg-card p-5 transition-colors${teamId ? " hover:bg-secondary/30" : ""}`}
         >
             <div className="page-eyebrow">{label}</div>
-            <p className="list-title">{team.name ?? team.id ?? "Unnamed team"}</p>
+            <p className="list-title">{getTeamDisplayName(team)}</p>
             <div className="space-y-1">
                 {team.city && <p className="list-support">{team.city}</p>}
                 {team.category && (
@@ -241,7 +242,7 @@ export default async function MatchDetailPage(props: Readonly<MatchDetailPagePro
 
         const halLink = match.link(rel)?.href;
         const targetId = getEncodedResourceId(halLink);
-        
+
         if (targetId) {
             const linkedTeam = teams.find((t) => getEncodedResourceId(t.link("self")?.href ?? t.uri) === targetId);
             if (linkedTeam) return linkedTeam;
@@ -252,7 +253,7 @@ export default async function MatchDetailPage(props: Readonly<MatchDetailPagePro
         } else {
             console.warn(`HAL link for ${rel} absent. Falling back to name comparison for "${fallbackName}".`);
         }
-        
+
         return teams.find((t) => t.name === fallbackName) ?? null;
     };
 
@@ -313,7 +314,7 @@ export default async function MatchDetailPage(props: Readonly<MatchDetailPagePro
                                 Teams
                             </h2>
                         </div>
-                        
+
                         {teamsError && <ErrorAlert message={teamsError} />}
 
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -369,13 +370,18 @@ export default async function MatchDetailPage(props: Readonly<MatchDetailPagePro
                                 </h2>
                             </div>
                             {matchResults.length > 0 ? (
-                                // TODO: implement edit result form (new issue)
-                                <button
-                                    disabled
-                                    className="rounded border border-border bg-card px-4 py-2 text-sm text-muted-foreground opacity-50 cursor-not-allowed"
-                                >
-                                    Edit Result (coming soon)
-                                </button>
+                                <RecordResultForm
+                                    matchId={numericMatchId}
+                                    teamAId={teamAId}
+                                    teamBId={teamBId}
+                                    teamAName={teamADisplayName}
+                                    teamBName={teamBDisplayName}
+                                    mode="edit"
+                                    initialTeamAScore={matchResults[0]?.score}
+                                    initialTeamBScore={matchResults[1]?.score}
+                                    teamAResultUri={matchResults[0]?.link("self")?.href}
+                                    teamBResultUri={matchResults[1]?.link("self")?.href}
+                                />
                             ) : (
                                 <RecordResultForm
                                     matchId={numericMatchId}
