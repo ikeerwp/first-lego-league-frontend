@@ -20,6 +20,7 @@ import { User } from "@/types/user";
 import Link from "next/link";
 import MatchDeleteSection from "./match-delete-section";
 import RecordResultForm from "./record-result-form";
+import { InfoRow } from '@/app/components/info-row';
 
 export const dynamic = "force-dynamic";
 
@@ -88,15 +89,6 @@ function getRoundLabel(round: Round | null, fallbackRound?: string) {
     }
 
     return "Round unavailable";
-}
-
-function InfoRow({ label, value }: Readonly<{ label: string; value: string }>) {
-    return (
-        <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-2">
-            <span className="min-w-36 text-sm font-medium text-foreground">{label}</span>
-            <span className="text-sm text-muted-foreground">{value}</span>
-        </div>
-    );
 }
 
 function TeamCard({ team, label, yearQuery }: Readonly<{ team: Team; label: string; yearQuery: string }>) {
