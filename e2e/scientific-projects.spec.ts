@@ -11,7 +11,7 @@ test("scientific projects page renders published content or the empty state", as
     await expect(page.getByRole("heading", { name: "Season projects overview", level: 2 })).toBeVisible();
 
     const emptyState = page.getByText("No scientific projects found");
-    const projectCards = page.locator("ul.list-grid > li");
+    const projectCards = page.locator("tbody > tr");
 
     await expect(emptyState.or(projectCards.first())).toBeVisible();
 });
@@ -108,4 +108,38 @@ test("authenticated users can open the new scientific project form", async ({ pa
     await expect(page.getByLabel("Project name")).toBeVisible();
     await expect(page.locator("form").getByLabel("Edition")).toBeVisible();
     await expect(page.getByLabel("Team")).toBeVisible();
+});
+
+test("displays room column and correctly renders assigned or unassigned states", async ({ page }) => {
+    // Note: ScientificProjectsPage is a Next.js Server Component. 
+    // We dynamically verify the existing rows since we cannot intercept the server's fetch.
+    await page.goto("/scientific-projects");
+
+    // The Room column header must always be visible
+    await expect(page.getByRole("columnheader", { name: "Room" })).toBeVisible();
+
+    const emptyState = page.getByText("No scientific projects found");
+    const projectRows = page.locator("tbody > tr");
+
+    if (await emptyState.isVisible()) {
+        return; // Nothing further to test if there are no projects
+    }
+
+    // Verify the first row correctly handles the room cell rendering (either a link or "—")
+    const firstRow = projectRows.first();
+    const roomCell = firstRow.locator("td").nth(2);
+
+    const hasDash = await roomCell.getByText("—", { exact: true }).isVisible();
+    const hasLink = await roomCell.getByRole("link").isVisible();
+    
+    expect(hasDash || hasLink).toBeTruthy();
+
+    if (hasLink) {
+        const href = await roomCell.getByRole("link").getAttribute("href");
+        expect(href).toMatch(/\/project-rooms\/.+/);
+
+        // Test navigation
+        await roomCell.getByRole("link").click();
+        await expect(page).toHaveURL(/\/project-rooms\/.+/);
+    }
 });
