@@ -2,6 +2,9 @@ import { AwardsService } from "@/api/awardApi";
 import { ScientificProjectsService } from "@/api/scientificProjectApi";
 import { TeamsService } from "@/api/teamApi";
 import { UsersService } from "@/api/userApi";
+import { MatchesService } from "@/api/matchesApi";
+import { EditionsService } from "@/api/editionApi";
+import { AwardsService } from "@/api/awardApi";
 import EmptyState from "@/app/components/empty-state";
 import ErrorAlert from "@/app/components/error-alert";
 import { ScientificProjectCardLink } from "@/app/components/scientific-project-card";
@@ -14,7 +17,11 @@ import { Award } from "@/types/award";
 import { ScientificProject } from "@/types/scientificProject";
 import { Team, TeamCoach, TeamMember, TeamMemberSnapshot } from "@/types/team";
 import { User } from "@/types/user";
-import TeamAwardsSection from "./_team-awards-section";
+import { Match } from "@/types/match";
+import { Award } from "@/types/award";
+import TournamentItinerary, { ScheduleItem } from "./tournament-itinerary";
+import AwardsSection from "./_awards-section";
+import TeamShareButton from "./team-share-button";
 
 interface TeamDetailPageProps {
     readonly params: Promise<{ id: string }>;
@@ -37,18 +44,45 @@ function getTeamDisplayName(team: Team | null): string | null {
     return team.name ?? team.id ?? null;
 }
 
-function getTeamUri(team: Team): string | null {
-    return team.link("self")?.href ?? team.uri ?? null;
+async function fetchMatchLink<T>(m: Match, rel: string, fetcher: () => Promise<T>): Promise<T | null> {
+    if (!m.link(rel)) return null;
+    return fetcher().catch(() => null);
 }
 
-function getTeamEditionUri(team: Team): string | null {
-    const editionHref = team.link("edition")?.href;
-    if (editionHref) {
-        return editionHref;
-    }
+function getOpponentName(tA: Team | null, tB: Team | null, targetId: string): string | undefined {
+    const idA = tA?.id ? String(tA.id) : undefined;
+    const idB = tB?.id ? String(tB.id) : undefined;
+    
+    if (idA === targetId) return tB?.name ?? tB?.id ?? "Unknown Team";
+    if (idB === targetId) return tA?.name ?? tA?.id ?? "Unknown Team";
+    return undefined;
+}
 
-    const edition = Reflect.get(team, "edition");
-    return typeof edition === "string" && edition.length > 0 ? edition : null;
+async function resolveMatchForTeam(m: Match, targetId: string, matchesService: MatchesService) {
+    const matchIdStr = m.uri ? m.uri.split("/").pop() : String(m.id);
+    if (!matchIdStr) return { m, hasTeam: false, table: "Unknown" };
+    
+    try {
+        const [tA, tB, compTable, matchRound] = await Promise.all([
+            fetchMatchLink(m, "teamA", () => matchesService.getMatchTeamA(matchIdStr)),
+            fetchMatchLink(m, "teamB", () => matchesService.getMatchTeamB(matchIdStr)),
+            fetchMatchLink(m, "competitionTable", () => matchesService.getMatchCompetitionTable(matchIdStr)),
+            fetchMatchLink(m, "round", () => matchesService.getMatchRound(matchIdStr))
+        ]);
+        
+        const opponent = getOpponentName(tA, tB, targetId);
+        const hasTeam = opponent !== undefined;
+        
+        const tableId = compTable?.uri ? compTable.uri.split("/").pop() : "Unknown";
+        let roundStr: string | undefined;
+        if (matchRound) {
+            roundStr = matchRound.number === undefined ? undefined : `Round ${matchRound.number}`;
+        }
+        
+        return { m, hasTeam, table: tableId ?? "Unknown", opponent, round: roundStr };
+    } catch {
+        return { m, hasTeam: false, table: "Unknown" };
+    }
 }
 
 export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps>) {
@@ -57,20 +91,24 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
     const service = new TeamsService(serverAuthProvider);
     const scientificProjectsService = new ScientificProjectsService(serverAuthProvider);
     const userService = new UsersService(serverAuthProvider);
+    const matchesService = new MatchesService(serverAuthProvider);
+    const editionsService = new EditionsService(serverAuthProvider);
     const awardsService = new AwardsService(serverAuthProvider);
 
     let currentUser: User | null = null;
     let team: Team | null = null;
+    let editionYearStr: string | undefined;
     let coaches: TeamCoach[] = [];
     let members: TeamMember[] = [];
     let scientificProjects: ScientificProject[] = [];
+    let teamMatchesData: { match: Match; table: string; opponent?: string; round?: string }[] = [];
     let awards: Award[] = [];
-    let teamEditionUri: string | null = null;
 
     let error: string | null = null;
     let membersError: string | null = null;
     let scientificProjectsError: string | null = null;
     let awardsError: string | null = null;
+    const matchesError: string | null = null;
 
     try {
         currentUser = await userService.getCurrentUser().catch(() => null);
@@ -79,6 +117,7 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
         if (e instanceof NotFoundError) {
             return <EmptyState title="Not found" description="Team does not exist" />;
         }
+
         error = parseErrorMessage(e);
     }
 
@@ -87,20 +126,27 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
     );
 
     const teamDisplayName = getTeamDisplayName(team);
+    const teamUri = team?.link("self")?.href ?? `/teams/${id}`;
 
     if (team && !error) {
-        const teamUri = getTeamUri(team);
-        teamEditionUri = getTeamEditionUri(team);
-
-        const [membersResult, scientificProjectsResult] = await Promise.allSettled([
+        const editionUri = team.link("edition")?.href;
+        
+        const [membersResult, scientificProjectsResult, matchesResult, editionResult, awardsResult] = await Promise.allSettled([
             Promise.all([
                 service.getTeamCoach(id),
                 service.getTeamMembers(id),
             ]),
             teamDisplayName
                 ? scientificProjectsService.getScientificProjectsByTeamName(teamDisplayName)
-                : Promise.resolve([] as ScientificProject[])
+                : Promise.resolve([] as ScientificProject[]),
+            matchesService.getMatches(),
+            editionUri ? editionsService.getEditionByUri(editionUri).catch(() => null) : Promise.resolve(null),
+            teamUri ? awardsService.getAwardsOfTeam(teamUri) : Promise.resolve([] as Award[])
         ]);
+
+        if (editionResult.status === "fulfilled" && editionResult.value) {
+            editionYearStr = String(editionResult.value.year);
+        }
 
         if (membersResult.status === "fulfilled") {
             const [coachesData, membersData] = membersResult.value;
@@ -118,16 +164,29 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
             scientificProjectsError = parseErrorMessage(scientificProjectsResult.reason);
         }
 
-        if (teamEditionUri && teamUri) {
-            try {
-                const editionAwards = await awardsService.getAwardsOfEdition(teamEditionUri);
-                awards = editionAwards.filter((award) => normalizeUri(getAwardWinnerTeamUri(award)) === normalizeUri(teamUri));
-            } catch (e) {
-                console.error("Error loading awards:", e);
-                awardsError = parseErrorMessage(e);
-            }
+        if (awardsResult.status === "fulfilled") {
+            awards = awardsResult.value;
+        } else {
+            console.error("Error loading awards:", awardsResult.reason);
+            awardsError = parseErrorMessage(awardsResult.reason);
         }
 
+        if (matchesResult.status === "fulfilled") {
+            const allMatches = matchesResult.value;
+            
+            const resolvedMatches = await Promise.all(
+                allMatches.map((m) => resolveMatchForTeam(m, String(id), matchesService))
+            );
+            
+            teamMatchesData = resolvedMatches.filter(r => r.hasTeam).map(r => ({
+                match: r.m,
+                table: r.table,
+                opponent: r.opponent,
+                round: r.round
+            }));
+        } else {
+            scientificProjectsError = parseErrorMessage(matchesResult.reason);
+        }
     }
 
     if (error) return <ErrorAlert message={error} />;
@@ -142,34 +201,74 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
                 coach.emailAddress?.trim().toLowerCase() === currentUserEmail
         );
 
-    // ✅ múltiples coaches
     const coachName =
         coaches.length > 0
             ? coaches
-                  .map(c => c.name ?? c.emailAddress ?? "Unnamed coach")
-                  .join(", ")
+                .map((coach) => coach.name ?? coach.emailAddress ?? "Unnamed coach")
+                .join(", ")
             : "No coach assigned";
 
     const initialMembers = members.map(toTeamMemberSnapshot);
 
     const membersKey = initialMembers
-        .map(m => m.uri ?? String(m.id ?? m.name ?? ""))
+        .map((member) => member.uri ?? String(member.id ?? member.name ?? ""))
         .join("|");
+
+    const schedule: ScheduleItem[] = [];
+
+    teamMatchesData.forEach(({ match: m, table, opponent, round }, index) => {
+        if (m.startTime) {
+            const isCompleted = m.state === "COMPLETED" || m.state === "FINISHED";
+            const matchId = m.uri ? m.uri.split('/').pop() : (m.id ?? index);
+            schedule.push({
+                id: `match-${matchId}`,
+                startTime: m.startTime,
+                endTime: m.endTime,
+                eventType: "Robot Game",
+                location: `Table ${table}`,
+                status: isCompleted ? "Completed" : "Pending",
+                opponent: opponent,
+                round: round,
+            });
+        }
+    });
+
+    scientificProjects.forEach((sp, index) => {
+        if (sp.startTime) {
+            const spId = sp.uri ? sp.uri.split("/").pop() : `unknown-${index}`;
+            schedule.push({
+                id: `sp-${spId}`,
+                startTime: sp.startTime,
+                eventType: "Scientific Project",
+                location: sp.room ? `Room ${sp.room}` : "Unknown Room",
+                status: sp.score === undefined ? "Pending" : "Completed",
+            });
+        }
+    });
+
+    schedule.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-background">
             <div className="w-full max-w-3xl px-4 py-10">
                 <div className="w-full rounded-lg border border-border bg-card p-6 shadow-sm">
+                    <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <h1 className="text-2xl font-semibold text-foreground">
+                            {teamDisplayName ?? "Unnamed team"}
+                        </h1>
 
-                    <h1 className="mb-2 text-2xl font-semibold text-foreground">
-                        {teamDisplayName ?? "Unnamed team"}
-                    </h1>
+                        <TeamShareButton teamName={teamDisplayName ?? "Unnamed team"} />
+                    </div>
 
                     <div className="mb-6 space-y-1 text-sm text-muted-foreground">
                         {team.city && (
-                            <p><strong>City:</strong> {team.city}</p>
+                            <p>
+                                <strong>City:</strong> {team.city}
+                            </p>
                         )}
-                        <p><strong>Coach:</strong> {coachName}</p>
+                        <p>
+                            <strong>Coach:</strong> {coachName}
+                        </p>
                     </div>
 
                     {isAdminUser && (
@@ -211,17 +310,20 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
                         />
                     )}
 
-                    {membersError && (
-                        <ErrorAlert message={membersError} />
-                    )}
+                    {membersError && <ErrorAlert message={membersError} />}
 
                     <section aria-labelledby="team-projects-heading">
-                        <h2 id="team-projects-heading" className="mt-8 mb-4 text-xl font-semibold">
+                        <h2
+                            id="team-projects-heading"
+                            className="mt-8 mb-4 text-xl font-semibold"
+                        >
                             Scientific Projects
                         </h2>
 
                         {scientificProjectsError && (
-                            <ErrorAlert message={`Could not load scientific projects. ${scientificProjectsError}`} />
+                            <ErrorAlert
+                                message={`Could not load scientific projects. ${scientificProjectsError}`}
+                            />
                         )}
 
                         {!scientificProjectsError && scientificProjects.length === 0 && (
@@ -246,6 +348,36 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
                             </ul>
                         )}
                     </section>
+
+                    <section aria-labelledby="tournament-itinerary-heading" className="mt-8">
+                        <h2 id="tournament-itinerary-heading" className="mb-4 text-xl font-semibold print:hidden">
+                            Tournament Itinerary
+                        </h2>
+                        {matchesError && (<ErrorAlert message={`Could not load matches. ${matchesError}`} />)}
+                        <TournamentItinerary
+                            teamName={teamDisplayName ?? "Team"}
+                            editionYear={editionYearStr}
+                            schedule={schedule}
+                        />
+                    </section>
+
+                    {awardsError && (
+                        <ErrorAlert message={`Could not load awards. ${awardsError}`} />
+                    )}
+                    
+                    {!awardsError && (
+                        <AwardsSection 
+                            teamId={id} 
+                            awards={awards.map(a => ({
+                                uri: a.uri ?? a.link("self")?.href,
+                                name: a.name,
+                                title: a.title,
+                                category: a.category,
+                                description: (a as { description?: string }).description
+                            }))} 
+                            isAdmin={isAdmin} 
+                        />
+                    )}
 
                 </div>
             </div>
