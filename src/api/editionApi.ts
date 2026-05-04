@@ -116,45 +116,46 @@ export class EditionsService {
         );
     }
 
-async updateEditionState(id: string, newState: string): Promise<Edition> {
-    const editionId = encodeURIComponent(id);
-    const authorization = await this.authStrategy.getAuth();
+    async updateEditionState(id: string, newState: string): Promise<Edition> {
+        const editionId = encodeURIComponent(id);
+        const authorization = await this.authStrategy.getAuth();
 
-    const response = await fetch(`${API_BASE_URL}/editions/${editionId}/state`, {
-        method: "PATCH",
-        headers: {
-            Accept: "application/vnd.hal+json",
-            "Content-Type": "application/json",
-            ...(authorization ? { Authorization: authorization } : {}),
-        },
-        body: JSON.stringify({ state: newState }),
-        cache: "no-store",
-    });
+        const response = await fetch(`${API_BASE_URL}/editions/${editionId}/state`, {
+            method: "PATCH",
+            headers: {
+                Accept: "application/vnd.hal+json",
+                "Content-Type": "application/json",
+                ...(authorization ? { Authorization: authorization } : {}),
+            },
+            body: JSON.stringify({ state: newState }),
+            cache: "no-store",
+        });
 
-    if (!response.ok) {
-        const message = await response.text();
+        if (!response.ok) {
+            const message = await response.text();
 
-        throw new ApiError(
-            message || `Failed to update edition state. HTTP ${response.status}`,
-            response.status,
-            true,
-        );
+            throw new ApiError(
+                message || `Failed to update edition state. HTTP ${response.status}`,
+                response.status,
+                true,
+            );
+        }
+
+        const updatedEdition = await this.getEditionById(id);
+
+        if (updatedEdition.state && updatedEdition.state !== newState) {
+            throw new ApiError(
+                `Edition state was not persisted. Expected ${newState}, but API returned ${updatedEdition.state}.`,
+                500,
+                true,
+            );
+        }
+
+        return {
+            ...updatedEdition,
+            state: updatedEdition.state ?? newState,
+        };
     }
-
-    const updatedEdition = await this.getEditionById(id);
-
-    if (updatedEdition.state !== newState) {
-        throw new ApiError(
-            `Edition state was not persisted. Expected ${newState}, but API returned ${
-                updatedEdition.state ?? "UNKNOWN"
-            }.`,
-            500,
-            true,
-        );
-    }
-
-    return updatedEdition;
-}
 
     async getEditionCompetitionTables(id: string): Promise<EditionCompetitionTable[]> {
         const encodedId = encodeURIComponent(id);
@@ -177,19 +178,19 @@ async updateEditionState(id: string, newState: string): Promise<Edition> {
     }
 
     async deleteEdition(id: string): Promise<void> {
-    const editionId = encodeURIComponent(id);
-    const authorization = await this.authStrategy.getAuth();
+        const editionId = encodeURIComponent(id);
+        const authorization = await this.authStrategy.getAuth();
 
-    const res = await fetch(`${API_BASE_URL}/editions/${editionId}`, {
-        method: "DELETE",
-        headers: {
-            ...(authorization ? { Authorization: authorization } : {}),
-        },
-        cache: "no-store",
-    });
+        const res = await fetch(`${API_BASE_URL}/editions/${editionId}`, {
+            method: "DELETE",
+            headers: {
+                ...(authorization ? { Authorization: authorization } : {}),
+            },
+            cache: "no-store",
+        });
 
-    if (!res.ok) {
-        throw new ApiError("Failed to delete edition", res.status, true);
+        if (!res.ok) {
+            throw new ApiError("Failed to delete edition", res.status, true);
+        }
     }
-}
 }

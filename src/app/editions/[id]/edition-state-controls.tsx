@@ -72,11 +72,14 @@ export default function EditionStateControls({
         setIsSubmitting(true);
         setError(null);
 
-       try {
-    const updatedEdition = await service.updateEditionState(editionId, nextState);
+        try {
+            const updatedEdition = await service.updateEditionState(
+                editionId,
+                nextState,
+            );
 
-    setCurrentState(updatedEdition.state ?? nextState);
-    setIsDialogOpen(false);
+            setCurrentState(updatedEdition.state ?? nextState);
+            setIsDialogOpen(false);
         } catch (e) {
             setError(e instanceof Error ? e.message : "Failed to update edition state.");
         } finally {
