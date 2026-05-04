@@ -11,7 +11,7 @@ test("scientific projects page renders published content or the empty state", as
     await expect(page.getByRole("heading", { name: "Season projects overview", level: 2 })).toBeVisible();
 
     const emptyState = page.getByText("No scientific projects found");
-    const projectCards = page.locator("ul.list-grid > li");
+    const projectCards = page.locator("tbody > tr");
 
     await expect(emptyState.or(projectCards.first())).toBeVisible();
 });
