@@ -20,6 +20,7 @@ import { MediaContent } from "@/types/mediaContent";
 import { Team } from "@/types/team";
 import { User } from "@/types/user";
 import { parseErrorMessage, NotFoundError } from "@/types/errors";
+import { getAwardWinnerTeamUri, normalizeUri } from "@/lib/awardUtils";
 import Link from "next/link";
 import { getTeamDisplayName } from "@/lib/teamUtils";
 import MediaUploadForm from "@/app/components/media-upload-form";
@@ -42,43 +43,6 @@ function getEditionTitle(edition: Edition | null, id: string) {
     }
 
     return `Edition ${id}`;
-}
-
-function getAwardWinnerTeamUri(award: Award): string | null {
-    const winnerTeamFromLink = award.link("winnerTeam")?.href;
-    if (winnerTeamFromLink) {
-        return winnerTeamFromLink;
-    }
-
-    if (typeof award.winnerTeam === "string" && award.winnerTeam.length > 0) {
-        return award.winnerTeam;
-    }
-
-    const winnerFromLink = award.link("winner")?.href;
-    if (winnerFromLink) {
-        return winnerFromLink;
-    }
-
-    const winner = Reflect.get(award, "winner");
-    if (typeof winner === "string" && winner.length > 0) {
-        return winner;
-    }
-
-    return null;
-}
-
-function normalizeUri(resourceUri: string | null | undefined): string | null {
-    if (!resourceUri) {
-        return null;
-    }
-
-    const sanitizedUri = resourceUri.split(/[?#]/, 1)[0] ?? null;
-
-    if (!sanitizedUri) {
-        return null;
-    }
-
-    return sanitizedUri.replace(/^https?:\/\/[^/]+/i, "");
 }
 
 interface EditionUriData {
