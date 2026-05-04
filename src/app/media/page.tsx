@@ -36,19 +36,13 @@ function getMediaUrl(content: MediaContent): string {
     return content.url ?? content.id ?? "";
 }
 
-function getMediaDetailId(content: MediaContent): string | null {
-    return getEncodedResourceId(content.uri ?? content.link?.("self")?.href);
-}
-
-function getMediaIdentity(content: MediaContent): string {
-    return getMediaDetailId(content) ?? getMediaUrl(content);
-}
-
 function toMediaViewerItem(content: MediaContent): MediaViewerItem {
+    const mediaUrl = getMediaUrl(content);
+
     return {
-        id: getMediaDetailId(content) ?? content.id,
+        id: mediaUrl,
         type: content.type,
-        url: getMediaUrl(content),
+        url: mediaUrl,
     };
 }
 
@@ -102,9 +96,13 @@ async function getEditionContext(
     }
 
     try {
+        const editionPromise = editionService.getEditionByUri(editionUri);
+        const mediaItemsPromise = mediaService.getMediaByEdition(editionUri);
+        const [edition, mediaItems] = await Promise.all([editionPromise, mediaItemsPromise]);
+
         return {
-            edition: await editionService.getEditionByUri(editionUri),
-            mediaItems: await mediaService.getMediaByEdition(editionUri),
+            edition,
+            mediaItems,
             warning: null,
         };
     } catch (e) {
@@ -147,7 +145,7 @@ export default async function MediaPage({ searchParams }: MediaPageProps) {
     const { edition, mediaItems, warning } = await getEditionContext(media, mediaService, editionService);
     const normalizedMediaItems = mediaItems.length > 0 ? mediaItems : [media];
     const activeIndex = Math.max(
-        normalizedMediaItems.findIndex((item) => getMediaIdentity(item) === getMediaIdentity(media)),
+        normalizedMediaItems.findIndex((item) => getMediaUrl(item) === getMediaUrl(media)),
         0
     );
     const editionId = getEncodedResourceId(edition?.uri);

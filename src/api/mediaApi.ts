@@ -14,9 +14,9 @@ export class MediaService {
         );
     }
 
-    async getMediaById(id: string): Promise<MediaContent> {
+    async getMediaById(mediaIdentifier: string): Promise<MediaContent> {
         return fetchHalResource<MediaContent>(
-            `/mediaContents/${encodeURIComponent(id)}`,
+            `/mediaContents/${encodeURIComponent(mediaIdentifier)}`,
             this.authStrategy
         );
     }

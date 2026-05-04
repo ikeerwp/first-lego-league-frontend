@@ -34,9 +34,8 @@ function getMediaUrl(item: MediaViewerItem): string {
 }
 
 function getMediaHref(item: MediaViewerItem): string {
-    return item.id
-        ? `/media?url=${item.id}`
-        : `/media?url=${encodeURIComponent(getMediaUrl(item))}`;
+    const mediaReference = item.id ?? getMediaUrl(item);
+    return `/media?url=${encodeURIComponent(mediaReference)}`;
 }
 
 function getYouTubeId(url?: string): string | null {
@@ -87,7 +86,9 @@ function MediaFrame({ media }: { readonly media: MediaViewerItem }) {
                 controls
                 playsInline
                 className="max-h-[72vh] w-full bg-black"
-            />
+            >
+                <track kind="captions" src="data:text/vtt,WEBVTT%0A" default />
+            </video>
         );
     }
 
@@ -128,7 +129,7 @@ export function MediaViewer({ media, mediaItems, activeIndex, edition }: MediaVi
     const router = useRouter();
     const touchStartX = useRef<number | null>(null);
     const canNavigate = mediaItems.length > 1;
-    const currentPosition = activeIndex >= 0 ? activeIndex : 0;
+    const currentPosition = Math.max(activeIndex, 0);
 
     const previousItem = useMemo(() => {
         if (!canNavigate) return null;
@@ -167,8 +168,8 @@ export function MediaViewer({ media, mediaItems, activeIndex, edition }: MediaVi
             }
         }
 
-        window.addEventListener("keydown", onKeyDown);
-        return () => window.removeEventListener("keydown", onKeyDown);
+        globalThis.addEventListener("keydown", onKeyDown);
+        return () => globalThis.removeEventListener("keydown", onKeyDown);
     }, [goTo, nextItem, previousItem]);
 
     const url = getMediaUrl(media);
