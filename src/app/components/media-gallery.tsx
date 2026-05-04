@@ -10,6 +10,7 @@ export interface MediaItem {
     id?: string;
     type?: string;
     url?: string;
+    edition?: string;
     link?: (rel: string) => { href?: string } | undefined;
 }
 
@@ -33,7 +34,17 @@ function getMediaReference(item: MediaItem): string | null {
 
 export function getMediaDetailHref(item: MediaItem): string | null {
     const mediaReference = getMediaReference(item);
-    return mediaReference ? `/media?url=${encodeURIComponent(mediaReference)}` : null;
+    if (!mediaReference) {
+        return null;
+    }
+
+    const searchParams = new URLSearchParams({ url: mediaReference });
+
+    if (item.edition) {
+        searchParams.set("edition", item.edition);
+    }
+
+    return `/media?${searchParams.toString()}`;
 }
 
 // ─── Shared thumbnail renderers ───────────────────────────────────────────────

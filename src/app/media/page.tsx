@@ -10,11 +10,12 @@ import { NotFoundError, parseErrorMessage } from "@/types/errors";
 import { MediaContent } from "@/types/mediaContent";
 
 interface MediaPageProps {
-    readonly searchParams: Promise<{ url?: string | string[] }>;
+    readonly searchParams: Promise<{ url?: string | string[]; edition?: string | string[] }>;
 }
 
 interface MediaResult {
     readonly media: MediaContent | null;
+    readonly mediaItems: MediaContent[];
     readonly error: string | null;
 }
 
@@ -36,24 +37,25 @@ function getMediaUrl(content: MediaContent): string {
     return content.url ?? content.id ?? "";
 }
 
-function toMediaViewerItem(content: MediaContent): MediaViewerItem {
+function toMediaViewerItem(content: MediaContent, editionUri?: string | null): MediaViewerItem {
     const mediaUrl = getMediaUrl(content);
 
     return {
         id: mediaUrl,
         type: content.type,
         url: mediaUrl,
+        edition: editionUri ?? getEditionUri(content) ?? undefined,
     };
 }
 
 function getEditionUri(content: MediaContent): string | null {
-    const linkedEdition = content.link?.("edition")?.href;
-    if (linkedEdition) {
-        return linkedEdition;
-    }
-
     if (typeof content.edition === "string" && content.edition.length > 0) {
         return content.edition;
+    }
+
+    const linkedEdition = content.link?.("edition")?.href;
+    if (linkedEdition && !linkedEdition.includes("/mediaContents/")) {
+        return linkedEdition;
     }
 
     return null;
@@ -67,16 +69,39 @@ function getMediaTitle(media: MediaContent | null): string {
     return media.type ? `Media ${media.type}` : "Media";
 }
 
-async function getMedia(mediaUrl: string, mediaService: MediaService): Promise<MediaResult> {
+function findMediaByUrl(mediaItems: MediaContent[], mediaUrl: string): MediaContent | null {
+    return mediaItems.find((item) => getMediaUrl(item) === mediaUrl) ?? null;
+}
+
+async function getMedia(
+    mediaUrl: string,
+    mediaService: MediaService,
+    editionUri: string | null
+): Promise<MediaResult> {
+    if (editionUri) {
+        try {
+            const mediaItems = await mediaService.getMediaByEdition(editionUri);
+            const media = findMediaByUrl(mediaItems, mediaUrl);
+
+            if (media) {
+                return { media, mediaItems, error: null };
+            }
+        } catch (e) {
+            console.error("Failed to fetch media from edition:", e);
+        }
+    }
+
     try {
         return {
             media: await mediaService.getMediaById(mediaUrl),
+            mediaItems: [],
             error: null,
         };
     } catch (e) {
         console.error("Failed to fetch media:", e);
         return {
             media: null,
+            mediaItems: [],
             error: e instanceof NotFoundError
                 ? "This media does not exist."
                 : parseErrorMessage(e),
@@ -87,9 +112,10 @@ async function getMedia(mediaUrl: string, mediaService: MediaService): Promise<M
 async function getEditionContext(
     media: MediaContent,
     mediaService: MediaService,
-    editionService: EditionsService
+    editionService: EditionsService,
+    editionUriFromQuery: string | null
 ): Promise<EditionContext> {
-    const editionUri = getEditionUri(media);
+    const editionUri = editionUriFromQuery ?? getEditionUri(media);
 
     if (!editionUri) {
         return { edition: null, mediaItems: [media], warning: null };
@@ -128,7 +154,9 @@ function renderMediaError(message: string) {
 }
 
 export default async function MediaPage({ searchParams }: MediaPageProps) {
-    const mediaUrl = firstParam((await searchParams).url);
+    const resolvedSearchParams = await searchParams;
+    const mediaUrl = firstParam(resolvedSearchParams.url);
+    const editionUri = firstParam(resolvedSearchParams.edition);
 
     if (!mediaUrl) {
         return renderMediaError("No media URL was provided.");
@@ -136,14 +164,15 @@ export default async function MediaPage({ searchParams }: MediaPageProps) {
 
     const mediaService = new MediaService(serverAuthProvider);
     const editionService = new EditionsService(serverAuthProvider);
-    const { media, error } = await getMedia(mediaUrl, mediaService);
+    const { media, mediaItems: mediaItemsFromLookup, error } = await getMedia(mediaUrl, mediaService, editionUri);
 
     if (error || !media) {
         return renderMediaError(error ?? "This media does not exist.");
     }
 
-    const { edition, mediaItems, warning } = await getEditionContext(media, mediaService, editionService);
-    const normalizedMediaItems = mediaItems.length > 0 ? mediaItems : [media];
+    const { edition, mediaItems, warning } = await getEditionContext(media, mediaService, editionService, editionUri);
+    const loadedMediaItems = mediaItems.length > 0 ? mediaItems : mediaItemsFromLookup;
+    const normalizedMediaItems = loadedMediaItems.length > 0 ? loadedMediaItems : [media];
     const activeIndex = Math.max(
         normalizedMediaItems.findIndex((item) => getMediaUrl(item) === getMediaUrl(media)),
         0
@@ -162,8 +191,8 @@ export default async function MediaPage({ searchParams }: MediaPageProps) {
                 </div>
             )}
             <MediaViewer
-                media={toMediaViewerItem(media)}
-                mediaItems={normalizedMediaItems.map(toMediaViewerItem)}
+                media={toMediaViewerItem(media, editionUri)}
+                mediaItems={normalizedMediaItems.map((item) => toMediaViewerItem(item, editionUri))}
                 activeIndex={activeIndex}
                 edition={edition
                     ? {

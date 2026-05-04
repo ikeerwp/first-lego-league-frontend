@@ -13,6 +13,7 @@ export interface MediaViewerItem {
     readonly id?: string;
     readonly type?: string;
     readonly url?: string;
+    readonly edition?: string;
 }
 
 export interface MediaViewerEdition {
@@ -35,7 +36,13 @@ function getMediaUrl(item: MediaViewerItem): string {
 
 function getMediaHref(item: MediaViewerItem): string {
     const mediaReference = item.id ?? getMediaUrl(item);
-    return `/media?url=${encodeURIComponent(mediaReference)}`;
+    const searchParams = new URLSearchParams({ url: mediaReference });
+
+    if (item.edition) {
+        searchParams.set("edition", item.edition);
+    }
+
+    return `/media?${searchParams.toString()}`;
 }
 
 function getYouTubeId(url?: string): string | null {

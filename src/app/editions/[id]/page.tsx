@@ -112,12 +112,13 @@ async function fetchByEditionUri(
     return result;
 }
 
-function toMediaItem(content: MediaContent): MediaItem {
+function toMediaItem(content: MediaContent, editionUri: string | null | undefined): MediaItem {
     return {
         uri: content.uri ?? content.link?.("self")?.href,
         id: content.id,
         type: content.type,
         url: content.url ?? content.id,  // real API omits `url`; the `id` field holds the media URL
+        edition: editionUri ?? content.edition,
     };
 }
 
@@ -302,7 +303,7 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
                                 {mediaError && <ErrorAlert message={mediaError} />}
 
                                 {!mediaError && mediaContents.length > 0 && (
-                                    <MediaSection mediaContents={mediaContents.map(toMediaItem)} />
+                                    <MediaSection mediaContents={mediaContents.map((media) => toMediaItem(media, edition?.uri))} />
                                 )}
 
                                 {!mediaError && mediaContents.length === 0 && (
