@@ -98,7 +98,7 @@ async function resolveMatchForTeam(match: Match, targetId: string, matchesServic
 
         const opponent = getOpponentName(teamA, teamB, targetId);
         const table = competitionTable?.uri ? competitionTable.uri.split("/").pop() ?? "Unknown" : "Unknown";
-        const roundLabel = round && round.number !== undefined ? `Round ${round.number}` : undefined;
+        const roundLabel = round?.number != null ? `Round ${round.number}` : undefined;
 
         return {
             match,
