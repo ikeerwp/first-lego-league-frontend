@@ -62,7 +62,10 @@ function MatchesTable({ matches, labels, yearQuery }: Readonly<{ matches: Match[
                             return (
                                 <tr
                                     key={getMatchKey(match, index)}
-                                    className="border-t border-border transition-colors hover:bg-secondary/40"
+                                    className={cn(
+                                        "border-t border-border transition-colors hover:bg-secondary/40",
+                                        match.state === "IN_PROGRESS" && "border-l-2 border-l-red-500 bg-red-500/5"
+                                    )}
                                 >
                                     <td className="px-4 py-4 text-sm text-foreground sm:px-5">
                                         {formatMatchTime(match.startTime)}
@@ -71,16 +74,23 @@ function MatchesTable({ matches, labels, yearQuery }: Readonly<{ matches: Match[
                                         {formatMatchTime(match.endTime)}
                                     </td>
                                     <td className="px-4 py-4 text-sm text-muted-foreground sm:px-5">
-                                        {matchId ? (
-                                            <Link
-                                                href={`/matches/${matchId}${yearQuery}`}
-                                                className="hover:text-foreground hover:underline underline-offset-2"
-                                            >
-                                                {getTeamsLabel(match, labels)}
-                                            </Link>
-                                        ) : (
-                                            getTeamsLabel(match, labels)
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            {match.state === "IN_PROGRESS" && (
+                                                <span className="inline-flex animate-pulse items-center rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-700">
+                                                    ● LIVE
+                                                </span>
+                                            )}
+                                            {matchId ? (
+                                                <Link
+                                                    href={`/matches/${matchId}${yearQuery}`}
+                                                    className="hover:text-foreground hover:underline underline-offset-2"
+                                                >
+                                                    {getTeamsLabel(match, labels)}
+                                                </Link>
+                                            ) : (
+                                                getTeamsLabel(match, labels)
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             );
@@ -153,7 +163,7 @@ export default async function MatchesPage({ searchParams }: Readonly<{ searchPar
         const resolvedLabels = await Promise.all(matches.map(async (match) => {
             const selfLink = match.link("self")?.href ?? match.uri;
             const matchId = getEncodedResourceId(selfLink);
-            
+
             if (!matchId) return { key: selfLink, label: "Unknown Team vs Unknown Team" };
 
             let nameA = match.teamA;
