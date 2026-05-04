@@ -1,6 +1,7 @@
 'use server';
 
 import { AwardsService } from "@/api/awardApi";
+import { EditionsService } from "@/api/editionApi";
 import { TeamsService } from "@/api/teamApi";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { isAdmin } from "@/lib/authz";
@@ -41,6 +42,7 @@ export async function createAwardForTeam(
         }
 
         const teamsService = new TeamsService(serverAuthProvider);
+        const editionsService = new EditionsService(serverAuthProvider);
         const awardsService = new AwardsService(serverAuthProvider);
 
         const team = await teamsService.getTeamById(teamId);
@@ -56,11 +58,14 @@ export async function createAwardForTeam(
             throw new Error("This team is not linked to an edition.");
         }
 
+        const resolvedEdition = await editionsService.getEditionByUri(teamEditionHref);
+        const editionHref = resolvedEdition.link("self")?.href ?? resolvedEdition.uri ?? teamEditionHref;
+
         await awardsService.createAward({
             name,
             title,
             category,
-            edition: teamEditionHref,
+            edition: editionHref,
             winner: teamHref,
         });
 

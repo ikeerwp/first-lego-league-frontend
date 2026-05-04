@@ -1,4 +1,5 @@
 import { AwardsService } from "@/api/awardApi";
+import { EditionsService } from "@/api/editionApi";
 import { ScientificProjectsService } from "@/api/scientificProjectApi";
 import { TeamsService } from "@/api/teamApi";
 import { UsersService } from "@/api/userApi";
@@ -58,6 +59,7 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
     const scientificProjectsService = new ScientificProjectsService(serverAuthProvider);
     const userService = new UsersService(serverAuthProvider);
     const awardsService = new AwardsService(serverAuthProvider);
+    const editionsService = new EditionsService(serverAuthProvider);
 
     let currentUser: User | null = null;
     let team: Team | null = null;
@@ -90,7 +92,17 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
 
     if (team && !error) {
         const teamUri = getTeamUri(team);
-        teamEditionUri = getTeamEditionUri(team);
+        const rawTeamEditionUri = getTeamEditionUri(team);
+
+        if (rawTeamEditionUri) {
+            try {
+                const resolvedEdition = await editionsService.getEditionByUri(rawTeamEditionUri);
+                teamEditionUri = resolvedEdition.link("self")?.href ?? resolvedEdition.uri ?? rawTeamEditionUri;
+            } catch (e) {
+                console.error("Error resolving team edition:", e);
+                teamEditionUri = rawTeamEditionUri;
+            }
+        }
 
         const [membersResult, scientificProjectsResult] = await Promise.allSettled([
             Promise.all([
