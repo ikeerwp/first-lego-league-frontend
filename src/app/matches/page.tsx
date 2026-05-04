@@ -15,6 +15,8 @@ import type { HalPage } from "@/types/pagination";
 import { Match } from "@/types/match";
 import { User } from "@/types/user";
 import Link from "next/link";
+import { MatchesTimeline } from "./matches-timeline";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -108,6 +110,9 @@ export default async function MatchesPage({ searchParams }: Readonly<{ searchPar
     const year = Array.isArray(yearParam) ? yearParam[0] : yearParam;
     const yearQuery = year ? `?year=${year}` : "";
     const urlPage = Math.max(1, Number(params.page ?? "1") || 1);
+    const viewParam = params.view;
+    const view = Array.isArray(viewParam) ? viewParam[0] : viewParam;
+    const isCalendarView = view === "calendar";
 
     let matches: Match[] = [];
     let matchLabels: Record<string, string> = {};
@@ -190,6 +195,15 @@ export default async function MatchesPage({ searchParams }: Readonly<{ searchPar
         error = getFriendlyMatchesError(fetchError);
     }
 
+    function buildViewUrl(newView: string) {
+        const urlParams = new URLSearchParams();
+        if (year) urlParams.set("year", year);
+        if (newView === "calendar") urlParams.set("view", "calendar");
+        if (urlPage > 1 && newView !== "calendar") urlParams.set("page", String(urlPage));
+        const qs = urlParams.toString();
+        return qs ? `/matches?${qs}` : "/matches";
+    }
+
     return (
         <PageShell
             eyebrow="Competition schedule"
@@ -205,19 +219,41 @@ export default async function MatchesPage({ searchParams }: Readonly<{ searchPar
             ) : undefined}
         >
             <div className="space-y-6">
-                <div className="flex items-end justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                     <div className="space-y-3">
                         <div className="page-eyebrow">Live listing</div>
                         <h2 className="section-title">Match schedule</h2>
                     </div>
-                    {editionId && (
-                        <Link
-                            href={`/editions/${editionId}/competition-tables`}
-                            className={buttonVariants({ variant: "outline", size: "sm" })}
-                        >
-                            Competition Tables
-                        </Link>
-                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex bg-secondary p-1 rounded-md border border-border">
+                            <Link
+                                href={buildViewUrl("list")}
+                                className={cn(
+                                    "px-3 py-1.5 text-sm font-medium rounded-sm transition-colors",
+                                    isCalendarView ? "text-muted-foreground hover:text-foreground" : "bg-background text-foreground shadow-sm"
+                                )}
+                            >
+                                List
+                            </Link>
+                            <Link
+                                href={buildViewUrl("calendar")}
+                                className={cn(
+                                    "px-3 py-1.5 text-sm font-medium rounded-sm transition-colors",
+                                    isCalendarView ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                Calendar
+                            </Link>
+                        </div>
+                        {editionId && (
+                            <Link
+                                href={`/editions/${editionId}/competition-tables`}
+                                className={buttonVariants({ variant: "outline", size: "sm" })}
+                            >
+                                Competition Tables
+                            </Link>
+                        )}
+                    </div>
                 </div>
 
                 {error && <ErrorAlert message={error} />}
@@ -231,8 +267,12 @@ export default async function MatchesPage({ searchParams }: Readonly<{ searchPar
 
                 {!error && matches.length > 0 && (
                     <div className="space-y-4">
-                        <MatchesTable matches={matches} labels={matchLabels} yearQuery={yearQuery} />
-                        {!year && (
+                        {isCalendarView ? (
+                            <MatchesTimeline matches={matches} labels={matchLabels} yearQuery={yearQuery} />
+                        ) : (
+                            <MatchesTable matches={matches} labels={matchLabels} yearQuery={yearQuery} />
+                        )}
+                        {!year && !isCalendarView && (
                             <PaginationControls
                                 currentPage={urlPage}
                                 hasNext={result.hasNext}
