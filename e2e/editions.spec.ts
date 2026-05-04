@@ -27,6 +27,15 @@ test("editions page renders the current archive page and links to an edition det
 
     if (await paginationSummary.count()) {
         await expect(paginationSummary).toHaveText("1");
+
+        const nextPageLink = page.getByRole("link", { name: "Next" });
+
+        await expect(nextPageLink).toBeVisible();
+        await nextPageLink.click();
+
+        await expect(page).toHaveURL(/\/editions\?page=2$/);
+        await expect(paginationSummary).toHaveText("2");
+        await expect(editionCards.first()).toBeVisible();
     }
 
     await firstEditionLink.click();
