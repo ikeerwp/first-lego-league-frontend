@@ -6,6 +6,7 @@ import { UsersService } from "@/api/userApi";
 import { buttonVariants } from "@/app/components/button";
 import ErrorAlert from "@/app/components/error-alert";
 import EmptyState from "@/app/components/empty-state";
+import EditionStateControls from "./edition-state-controls";
 import LeaderboardTable from "@/app/components/leaderboard-table";
 import { MediaItem } from "@/app/components/media-gallery";
 import { MediaSection } from "@/app/components/media-section";
@@ -41,10 +42,6 @@ function getEditionTitle(edition: Edition | null, id: string) {
     }
 
     return `Edition ${id}`;
-}
-
-function getAwardLabel(award: Award, fallbackIndex: number): string {
-    return award.name ?? award.title ?? award.category ?? `Award ${fallbackIndex + 1}`;
 }
 
 function getAwardWinnerTeamUri(award: Award): string | null {
@@ -96,7 +93,12 @@ async function fetchByEditionUri(
     awardsService: AwardsService,
     mediaService: MediaService,
 ): Promise<EditionUriData> {
-    const result: EditionUriData = { awards: [], mediaContents: [], awardsError: null, mediaError: null };
+    const result: EditionUriData = {
+        awards: [],
+        mediaContents: [],
+        awardsError: null,
+        mediaError: null,
+    };
 
     try {
         result.awards = await awardsService.getAwardsOfEdition(editionUri);
@@ -191,7 +193,11 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
         }
 
         if (edition.uri) {
-            ({ awards, mediaContents, awardsError, mediaError } = await fetchByEditionUri(edition.uri, awardsService, mediaService));
+            ({ awards, mediaContents, awardsError, mediaError } = await fetchByEditionUri(
+                edition.uri,
+                awardsService,
+                mediaService
+            ));
         }
 
         try {
@@ -203,7 +209,7 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
         }
     }
 
-    const awardsByTeamUri = getAwardsByTeamUri(awards);
+    getAwardsByTeamUri(awards);
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-background">
@@ -211,12 +217,28 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
                 <div className="w-full rounded-lg border border-border bg-card p-6 shadow-sm">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                            <h1 className="mb-2 text-2xl font-semibold text-foreground">{getEditionTitle(edition, id)}</h1>
-                            {edition?.venueName && (
-                                <p className="text-sm text-muted-foreground">{edition.venueName}</p>
+                            <h1 className="mb-2 text-2xl font-semibold text-foreground">
+                                {getEditionTitle(edition, id)}
+                            </h1>
+
+                            {edition && (
+                                <EditionStateControls
+                                    editionId={id}
+                                    state={edition.state}
+                                    isAdmin={!!(currentUser && isAdmin(currentUser))}
+                                />
                             )}
+
+                            {edition?.venueName && (
+                                <p className="text-sm text-muted-foreground">
+                                    {edition.venueName}
+                                </p>
+                            )}
+
                             {edition?.description && (
-                                <p className="mt-2 text-sm text-muted-foreground">{edition.description}</p>
+                                <p className="mt-2 text-sm text-muted-foreground">
+                                    {edition.description}
+                                </p>
                             )}
                         </div>
 
@@ -242,7 +264,9 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
 
                     {!error && (
                         <>
-                            <h2 className="mt-8 mb-4 text-xl font-semibold text-foreground">Participating Teams</h2>
+                            <h2 className="mt-8 mb-4 text-xl font-semibold text-foreground">
+                                Participating Teams
+                            </h2>
 
                             {teamsError && <ErrorAlert message={teamsError} />}
 
@@ -257,7 +281,7 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
                                 <ul className="w-full space-y-3">
                                     {teams.map((team, index) => {
                                         const href = getTeamHref(team);
-                                        const teamAwards = awardsByTeamUri.get(normalizeUri(team.uri) ?? "") ?? [];
+
                                         return (
                                             <li
                                                 key={team.uri ?? index}
@@ -293,7 +317,9 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
                                 </div>
                             )}
 
-                            <h2 className="mt-8 mb-4 text-xl font-semibold text-foreground">Final Classification</h2>
+                            <h2 className="mt-8 mb-4 text-xl font-semibold text-foreground">
+                                Final Classification
+                            </h2>
 
                             {classificationError && <ErrorAlert message={classificationError} />}
 
@@ -309,7 +335,9 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
                             )}
 
                             <section id="media-section">
-                                <h2 className="mt-8 mb-4 text-xl font-semibold text-foreground">Media Gallery</h2>
+                                <h2 className="mt-8 mb-4 text-xl font-semibold text-foreground">
+                                    Media Gallery
+                                </h2>
 
                                 {currentUser && isAdmin(currentUser) && edition && (
                                     <MediaUploadForm editionId={id} />
