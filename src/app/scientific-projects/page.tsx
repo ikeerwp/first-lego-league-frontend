@@ -5,7 +5,6 @@ import EmptyState from "@/app/components/empty-state";
 import ErrorAlert from "@/app/components/error-alert";
 import PageShell from "@/app/components/page-shell";
 import PaginationControls from "@/app/components/pagination-controls";
-import { ScientificProjectCardLink } from "@/app/components/scientific-project-card";
 import ScientificProjectTeamSearch from "@/app/components/scientific-project-team-search";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { getEncodedResourceId } from "@/lib/halRoute";
