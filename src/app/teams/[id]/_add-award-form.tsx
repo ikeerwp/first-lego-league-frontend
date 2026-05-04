@@ -80,7 +80,11 @@ export default function AddAwardForm({
 
             {submitError && <ErrorAlert message={submitError} className="mb-4" />}
             {submitSuccess && (
-                <div className="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-700">
+                <div
+                    role="status"
+                    aria-live="polite"
+                    className="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-700"
+                >
                     {submitSuccess}
                 </div>
             )}

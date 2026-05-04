@@ -1,7 +1,18 @@
 import type { Award } from "@/types/award";
 
+function pickFirstNonEmpty(...values: Array<string | null | undefined>): string | null {
+    for (const value of values) {
+        const trimmed = value?.trim();
+        if (trimmed) {
+            return trimmed;
+        }
+    }
+
+    return null;
+}
+
 export function getAwardLabel(award: Award, fallbackIndex: number): string {
-    return award.name ?? award.title ?? award.category ?? `Award ${fallbackIndex + 1}`;
+    return pickFirstNonEmpty(award.name, award.title, award.category) ?? `Award ${fallbackIndex + 1}`;
 }
 
 export function getAwardWinnerTeamUri(award: Award): string | null {
