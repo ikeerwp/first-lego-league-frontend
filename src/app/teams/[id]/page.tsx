@@ -19,6 +19,7 @@ import { User } from "@/types/user";
 import TeamAwardsSection from "./_team-awards-section";
 import TeamShareButton from "./team-share-button";
 import TournamentItinerary, { ScheduleItem } from "./tournament-itinerary";
+import CoachesDisplay from "./coaches-display";
 
 interface TeamDetailPageProps {
     readonly params: Promise<{ id: string }>;
@@ -317,9 +318,12 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
                                 <strong>Edition:</strong> {editionYearStr}
                             </p>
                         )}
-                        <p>
-                            <strong>Coach:</strong> {coachName}
-                        </p>
+                        <CoachesDisplay
+                            coaches={coaches.map((c) => ({
+                                name: c.name,
+                                emailAddress: c.emailAddress,
+                            }))}
+                        />
                     </div>
 
                     {isAdminUser && (
