@@ -14,6 +14,7 @@ import { serverAuthProvider } from "@/lib/authProvider";
 import { isAdmin } from "@/lib/authz";
 import { getEncodedResourceId } from "@/lib/halRoute";
 import { Award } from "@/types/award";
+import { Round } from "@/types/round";
 import { Edition } from "@/types/edition";
 import type { LeaderboardItem } from "@/types/leaderboard";
 import { MediaContent } from "@/types/mediaContent";
@@ -26,7 +27,8 @@ import { getTeamDisplayName } from "@/lib/teamUtils";
 import MediaUploadForm from "@/app/components/media-upload-form";
 import { redirect } from "next/navigation";
 import DeleteEditionButton from "./delete-edition-button";
-
+import RoundsManager from "./rounds-manager";
+import { RoundsService } from "@/api/roundsApi";
 
 interface EditionDetailPageProps {
     readonly params: Promise<{ id: string }>;
@@ -86,7 +88,7 @@ function toMediaItem(content: MediaContent, editionUri: string | null | undefine
         uri: content.uri ?? content.link?.("self")?.href,
         id: content.id,
         type: content.type,
-        url: content.url ?? content.id,  // real API omits `url`; the `id` field holds the media URL
+        url: content.url ?? content.id,
         edition: editionUri ?? content.edition,
     };
 }
@@ -112,11 +114,12 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
     const { id } = await props.params;
 
     async function deleteEditionAction() {
-    "use server";
+        "use server";
 
-    await new EditionsService(serverAuthProvider).deleteEdition(id);
-    redirect("/editions");
-}
+        await new EditionsService(serverAuthProvider).deleteEdition(id);
+        redirect("/editions");
+    }
+
     const editionsService = new EditionsService(serverAuthProvider);
     const awardsService = new AwardsService(serverAuthProvider);
     const mediaService = new MediaService(serverAuthProvider);
@@ -127,11 +130,13 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
     let awards: Award[] = [];
     let mediaContents: MediaContent[] = [];
     let leaderboardItems: LeaderboardItem[] = [];
+    let rounds: Round[] = [];
     let error: string | null = null;
     let teamsError: string | null = null;
     let awardsError: string | null = null;
     let mediaError: string | null = null;
     let classificationError: string | null = null;
+    let roundsError: string | null = null;
 
     try {
         edition = await editionsService.getEditionById(id);
@@ -160,7 +165,7 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
             ({ awards, mediaContents, awardsError, mediaError } = await fetchByEditionUri(
                 edition.uri,
                 awardsService,
-                mediaService
+                mediaService,
             ));
         }
 
@@ -170,6 +175,13 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
         } catch (e) {
             console.error("Failed to fetch leaderboard:", e);
             classificationError = parseErrorMessage(e);
+        }
+
+        try {
+            rounds = await new RoundsService(serverAuthProvider).getRounds();
+        } catch (e) {
+            console.error("Failed to fetch rounds:", e);
+            roundsError = parseErrorMessage(e);
         }
     }
 
@@ -207,17 +219,17 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
                         </div>
 
                         {currentUser && isAdmin(currentUser) && (
-                        <div className="flex gap-2">
-                            <Link
-                                href={`/editions/${id}/edit`}
-                                className={buttonVariants({ variant: "default", size: "sm" })}
-                            >
-                                ✏️ edit
-                            </Link>
+                            <div className="flex gap-2">
+                                <Link
+                                    href={`/editions/${id}/edit`}
+                                    className={buttonVariants({ variant: "default", size: "sm" })}
+                                >
+                                    ✏️ edit
+                                </Link>
 
-                            <DeleteEditionButton deleteAction={deleteEditionAction} />
-                        </div>
-                    )}
+                                <DeleteEditionButton deleteAction={deleteEditionAction} />
+                            </div>
+                        )}
                     </div>
 
                     {error && (
@@ -296,6 +308,19 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
 
                             {!classificationError && leaderboardItems.length > 0 && (
                                 <LeaderboardTable items={leaderboardItems} />
+                            )}
+
+                            <h2 className="mt-8 mb-4 text-xl font-semibold text-foreground">
+                                Rounds
+                            </h2>
+
+                            {roundsError && <ErrorAlert message={roundsError} />}
+
+                            {!roundsError && (
+                                <RoundsManager
+                                    initialRounds={rounds.map((r) => ({ uri: r.uri, number: r.number }))}
+                                    isAdmin={!!(currentUser && isAdmin(currentUser))}
+                                />
                             )}
 
                             <section id="media-section">
