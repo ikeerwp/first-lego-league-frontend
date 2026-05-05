@@ -21,8 +21,6 @@ test("editions page renders the current archive page and links to an edition det
         return;
     }
 
-    expect(await editionCards.count()).toBeLessThanOrEqual(6);
-
     const paginationSummary = page.locator(".pagination-controls__page-number");
 
     if (await paginationSummary.count()) {

@@ -283,9 +283,11 @@ export default function EditionsClient({
                 <EmptyState
                     title="No editions found"
                     description={
-                        initialSearch.trim() || initialState
-                            ? `No editions match the current filters. Try adjusting your search or state.`
-                            : 'There are currently no editions available to display.'
+                        initialSearch.trim()
+                            ? `No editions match "${initialSearch}". Try a different year, venue or state.`
+                            : initialState
+                                ? `No editions found for the selected state. Try a different year, venue or state.`
+                                : 'There are currently no editions available to display.'
                     }
                 />
             ) : (
