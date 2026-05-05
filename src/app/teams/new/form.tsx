@@ -332,6 +332,26 @@ export default function NewTeamForm() {
                                     </select>
                                     <FieldError message={errors.members?.[index]?.gender?.message} />
                                 </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor={`member-tshirt-${index}`}>T-shirt size</Label>
+                                    <select
+                                        id={`member-tshirt-${index}`}
+                                        className={selectClassName}
+                                        aria-invalid={!!errors.members?.[index]?.tShirtSize}
+                                        {...register(`members.${index}.tShirtSize`, {
+                                            required: "Member T-shirt size is required",
+                                        })}
+                                    >
+                                        <option value="">Select size...</option>
+                                        <option value="S">S</option>
+                                        <option value="M">M</option>
+                                        <option value="L">L</option>
+                                        <option value="XL">XL</option>
+                                        <option value="XXL">XXL</option>
+                                    </select>
+                                    <FieldError message={errors.members?.[index]?.tShirtSize?.message} />
+                                </div>
                             </div>
                         </div>
                     ))}
