@@ -40,47 +40,6 @@ function getEditionTitle(edition: Edition | null, id: string) {
     return `Edition ${id}`;
 }
 
-function getAwardLabel(award: Award, fallbackIndex: number): string {
-    return award.name ?? award.title ?? award.category ?? `Award ${fallbackIndex + 1}`;
-}
-
-function getAwardWinnerTeamUri(award: Award): string | null {
-    const winnerTeamFromLink = award.link("winnerTeam")?.href;
-    if (winnerTeamFromLink) {
-        return winnerTeamFromLink;
-    }
-
-    if (typeof award.winnerTeam === "string" && award.winnerTeam.length > 0) {
-        return award.winnerTeam;
-    }
-
-    const winnerFromLink = award.link("winner")?.href;
-    if (winnerFromLink) {
-        return winnerFromLink;
-    }
-
-    const winner = Reflect.get(award, "winner");
-    if (typeof winner === "string" && winner.length > 0) {
-        return winner;
-    }
-
-    return null;
-}
-
-function normalizeUri(resourceUri: string | null | undefined): string | null {
-    if (!resourceUri) {
-        return null;
-    }
-
-    const sanitizedUri = resourceUri.split(/[?#]/, 1)[0] ?? null;
-
-    if (!sanitizedUri) {
-        return null;
-    }
-
-    return sanitizedUri.replace(/^https?:\/\/[^/]+/i, "");
-}
-
 interface EditionUriData {
     awards: Award[];
     mediaContents: MediaContent[];
@@ -120,23 +79,6 @@ function toMediaItem(content: MediaContent, editionUri: string | null | undefine
         url: content.url ?? content.id,  // real API omits `url`; the `id` field holds the media URL
         edition: editionUri ?? content.edition,
     };
-}
-
-function getAwardsByTeamUri(awards: Award[]): Map<string, Award[]> {
-    const awardsByTeamUri = new Map<string, Award[]>();
-
-    for (const award of awards) {
-        const teamUri = normalizeUri(getAwardWinnerTeamUri(award));
-        if (!teamUri) {
-            continue;
-        }
-
-        const existingAwards = awardsByTeamUri.get(teamUri) ?? [];
-        existingAwards.push(award);
-        awardsByTeamUri.set(teamUri, existingAwards);
-    }
-
-    return awardsByTeamUri;
 }
 
 export default async function EditionDetailPage(props: Readonly<EditionDetailPageProps>) {
@@ -193,8 +135,6 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
         }
     }
 
-    const awardsByTeamUri = getAwardsByTeamUri(awards);
-
     return (
         <div className="flex min-h-screen items-center justify-center bg-background">
             <div className="w-full max-w-3xl px-4 py-10">
@@ -240,7 +180,6 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
                                 <ul className="w-full space-y-3">
                                     {teams.map((team, index) => {
                                         const href = getTeamHref(team);
-                                        const teamAwards = awardsByTeamUri.get(normalizeUri(team.uri) ?? "") ?? [];
                                         return (
                                             <li
                                                 key={team.uri ?? index}
@@ -277,6 +216,12 @@ export default async function EditionDetailPage(props: Readonly<EditionDetailPag
                             )}
 
                             <h2 className="mt-8 mb-4 text-xl font-semibold text-foreground">Final Classification</h2>
+
+                            <div className="mb-4">
+                                <Link href={`/editions/${id}/project-ranking`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                                    Scientific Project Ranking
+                                </Link>
+                            </div>
 
                             {classificationError && <ErrorAlert message={classificationError} />}
 
