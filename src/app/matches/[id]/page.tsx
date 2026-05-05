@@ -20,7 +20,7 @@ import { User } from "@/types/user";
 import Link from "next/link";
 import MatchDeleteSection from "./match-delete-section";
 import RecordResultForm from "./record-result-form";
-import { InfoRow } from '@/app/components/info-row';
+import { InfoRow } from "@/app/components/info-row";
 
 export const dynamic = "force-dynamic";
 
@@ -30,32 +30,27 @@ interface MatchDetailPageProps {
 }
 
 function getMatchTitle(match: Match | null, id: string) {
-    if (!match) {
-        let decodedId = id;
-        try {
-            decodedId = decodeURIComponent(id);
-        } catch {}
-        return `Match ${decodedId}`;
-    }
+    if (!match) return `Match ${id}`;
 
     const parts: string[] = [];
     if (match.round) parts.push(`Round ${match.round}`);
     if (match.competitionTable) parts.push(`Table ${match.competitionTable}`);
-    return parts.length > 0 ? parts.join(" | ") : `Match ${match.id}`;
+
+    return parts.length ? parts.join(" | ") : `Match ${match.id}`;
 }
 
-function getUriLabel(resourceUri?: string, fallbackPrefix: string = "Item") {
-    const uri = resourceUri ?? "";
-    let decodedId = uri.split("/").findLast(Boolean) ?? "";
+function getUriLabel(resourceUri?: string, fallbackPrefix = "Item") {
+    if (!resourceUri) return fallbackPrefix;
 
+    const decoded = resourceUri.split("/").findLast(Boolean) ?? "";
     try {
-        decodedId = decodeURIComponent(decodedId);
-    } catch {}
-
-    return decodedId ? `${fallbackPrefix} ${decodedId}` : fallbackPrefix;
+        return decoded ? `${fallbackPrefix} ${decodeURIComponent(decoded)}` : fallbackPrefix;
+    } catch {
+        return decoded ? `${fallbackPrefix} ${decoded}` : fallbackPrefix;
+    }
 }
 
-function getEditionLabel(edition: Edition | null) {
+function getEditionLabel(edition: Edition | null): string {
     if (!edition) return "Edition unavailable";
 
     if (edition.year && edition.venueName) return `${edition.year} - ${edition.venueName}`;
@@ -65,53 +60,22 @@ function getEditionLabel(edition: Edition | null) {
     return getUriLabel(edition.link("self")?.href ?? edition.uri, "Edition");
 }
 
-function getRoundLabel(round: Round | null, fallbackRound?: string) {
+function getRoundLabel(round: Round | null, fallback?: string): string {
     if (round?.number !== undefined) return `Round ${round.number}`;
 
-    if (fallbackRound) {
-        return /^round\s+/i.test(fallbackRound)
-            ? fallbackRound
-            : getUriLabel(fallbackRound, "Round");
+    if (fallback) {
+        return /^round\s+/i.test(fallback)
+            ? fallback
+            : getUriLabel(fallback, "Round");
     }
 
     return "Round unavailable";
 }
 
-function TeamCard({ team, label, yearQuery }: Readonly<{ team: Team; label: string; yearQuery: string }>) {
-    const teamId = getEncodedResourceId(team.uri ?? team.link("self")?.href);
-
-    const cardContent = (
-        <div className={`module-card flex flex-col gap-2 rounded-lg border border-border bg-card p-5 ${teamId ? "hover:bg-secondary/30" : ""}`}>
-            <div className="page-eyebrow">{label}</div>
-            <p className="list-title">{getTeamDisplayName(team)}</p>
-            <div className="space-y-1">
-                {team.city && <p className="list-support">{team.city}</p>}
-                {team.category && <span className="status-badge inline-block">{team.category}</span>}
-            </div>
-            {teamId && (
-                <p className="mt-1 text-xs font-medium underline">
-                    View team details →
-                </p>
-            )}
-        </div>
-    );
-
-    if (teamId) return <Link href={`/teams/${teamId}${yearQuery}`}>{cardContent}</Link>;
-    return cardContent;
-}
-
-function UnknownTeamCard({ label, name }: Readonly<{ label: string; name?: string }>) {
-    return (
-        <div className="module-card flex flex-col gap-2 rounded-lg border border-border bg-card p-5">
-            <div className="page-eyebrow">{label}</div>
-            <p className="list-title">{name ?? "Unknown team"}</p>
-        </div>
-    );
-}
-
 export default async function MatchDetailPage(props: Readonly<MatchDetailPageProps>) {
     const { id } = await props.params;
     const searchParams = await props.searchParams;
+
     const yearParam = searchParams.year;
     const year = Array.isArray(yearParam) ? yearParam[0] : yearParam;
     const yearQuery = year ? `?year=${year}` : "";
@@ -121,13 +85,18 @@ export default async function MatchDetailPage(props: Readonly<MatchDetailPagePro
     let match: Match | null = null;
     let teams: Team[] = [];
     let currentUser: User | null = null;
+
     let matchError: string | null = null;
     let teamsError: string | null = null;
+
     let isAuthorized = false;
+
     let formTeamA: Team | null = null;
     let formTeamB: Team | null = null;
+
     let round: Round | null = null;
     let edition: Edition | null = null;
+
     let matchResults: MatchResult[] = [];
 
     let teamAId = "";
@@ -156,77 +125,56 @@ export default async function MatchDetailPage(props: Readonly<MatchDetailPagePro
 
         const roundDetailsPromise = service
             .getMatchRound(id)
-            .then((resolvedRound) => {
+            .then(async (r) => {
                 const editionUri =
-                    resolvedRound.link("edition")?.href ??
-                    (resolvedRound.uri ? `${resolvedRound.uri}/edition` : null);
+                    r.link("edition")?.href ?? (r.uri ? `${r.uri}/edition` : null);
 
-                if (!editionUri) return { round: resolvedRound, edition: null };
+                if (!editionUri) return { round: r, edition: null };
 
-                return editionsService
-                    .getEditionByUri(editionUri)
-                    .then((resolvedEdition) => ({
-                        round: resolvedRound,
-                        edition: resolvedEdition,
-                    }))
-                    .catch(() => ({ round: resolvedRound, edition: null }));
+                try {
+                    const ed = await editionsService.getEditionByUri(editionUri);
+                    return { round: r, edition: ed };
+                } catch {
+                    return { round: r, edition: null };
+                }
             })
             .catch(() => ({ round: null, edition: null }));
 
         const [, roundDetails] = await Promise.all([
             teamsService.getTeams().then((t) => (teams = t)),
+
             roundDetailsPromise,
+
             service.getMatchTeamA(id).then((t) => {
                 formTeamA = t;
-                teamADisplayName = t.name ?? t.id ?? "Team A";
+                teamADisplayName = t.name ?? "Team A";
                 teamAId = decodeURIComponent(t.link("self")?.href?.split("/").pop() ?? "");
             }).catch(() => null),
+
             service.getMatchTeamB(id).then((t) => {
                 formTeamB = t;
-                teamBDisplayName = t.name ?? t.id ?? "Team B";
+                teamBDisplayName = t.name ?? "Team B";
                 teamBId = decodeURIComponent(t.link("self")?.href?.split("/").pop() ?? "");
             }).catch(() => null),
+
             service.getMatchResults(matchUri).then((r) => {
                 matchResults = r;
-            }).catch(() => null),
+            }).catch(() => []),
         ]);
 
         round = roundDetails?.round ?? null;
         edition = roundDetails?.edition ?? null;
     }
 
-    const resolveTeam = (rel: "teamA" | "teamB", fallbackName?: string) => {
-        if (!match) return null;
-
-        const halLink = match.link(rel)?.href;
-        const targetId = getEncodedResourceId(halLink);
-
-        if (targetId) {
-            const found = teams.find(
-                (t) => getEncodedResourceId(t.link("self")?.href ?? t.uri) === targetId
-            );
-            if (found) return found;
-        }
-
-        return teams.find((t) => t.name === fallbackName) ?? null;
-    };
-
-    const teamA = resolveTeam("teamA", match?.teamA);
-    const teamB = resolveTeam("teamB", match?.teamB);
-
-    const displayTeamA = teamA ?? formTeamA;
-    const displayTeamB = teamB ?? formTeamB;
-
-    const displayEdition = getEditionLabel(edition);
-    const displayRound = getRoundLabel(round, (match as any)?.round);
-
-    const displayState = matchResults.length > 0 ? "COMPLETED" : match?.state;
+    const displayEdition: string = getEditionLabel(edition);
+    const displayRound: string = getRoundLabel(round, match?.round);
+    const displayState: string = matchResults.length > 0 ? "COMPLETED" : (match?.state ?? "UNKNOWN");
 
     return (
         <PageShell
             eyebrow="Match details"
             title={getMatchTitle(match, id)}
-            description={displayState ? `Status: ${displayState}` : undefined}
+            description={`Status: ${displayState}`}
         >
             {matchError && <ErrorAlert message={matchError} />}
 
@@ -234,25 +182,10 @@ export default async function MatchDetailPage(props: Readonly<MatchDetailPagePro
                 <div className="space-y-8">
                     <section>
                         <h2>Match information</h2>
+
                         <InfoRow label="Edition" value={displayEdition} />
                         <InfoRow label="Round" value={displayRound} />
-                    </section>
-
-                    <section>
-                        <h2>Teams</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {displayTeamA ? (
-                                <TeamCard team={displayTeamA} label="Team A" yearQuery={yearQuery} />
-                            ) : (
-                                <UnknownTeamCard label="Team A" name={match.teamA} />
-                            )}
-
-                            {displayTeamB ? (
-                                <TeamCard team={displayTeamB} label="Team B" yearQuery={yearQuery} />
-                            ) : (
-                                <UnknownTeamCard label="Team B" name={match.teamB} />
-                            )}
-                        </div>
+                        <InfoRow label="State" value={displayState} />
                     </section>
                 </div>
             )}
