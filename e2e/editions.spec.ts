@@ -40,6 +40,19 @@ test("editions page renders the current archive page and links to an edition det
 
     await expect(page).toHaveURL(/\/editions\/.+$/);
     await expect(page.getByRole("heading", { name: "Participating Teams", level: 2 })).toBeVisible();
+
+    const projectRankingLink = page.getByRole("link", { name: "Scientific Project Ranking" });
+    await expect(projectRankingLink).toBeVisible();
+
+    await projectRankingLink.click();
+
+    await expect(page).toHaveURL(/\/editions\/.+\/project-ranking$/);
+    await expect(page.getByRole("heading", { name: /Project Ranking/, level: 1 })).toBeVisible();
+    await expect(
+        page.getByText("Project scores are not public yet")
+            .or(page.getByText("No scientific projects found"))
+            .or(page.getByRole("columnheader", { name: "Project Score" }))
+    ).toBeVisible();
 });
 
 test("editions page can be filtered from the search box", async ({ page }) => {
