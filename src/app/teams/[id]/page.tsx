@@ -312,6 +312,11 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
                                 <strong>City:</strong> {team.city}
                             </p>
                         )}
+                        {editionYearStr && (
+                            <p>
+                                <strong>Edition:</strong> {editionYearStr}
+                            </p>
+                        )}
                         <p>
                             <strong>Coach:</strong> {coachName}
                         </p>
