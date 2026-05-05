@@ -8,6 +8,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { buttonVariants } from '@/app/components/button';
 import { useRouter } from 'next/navigation';
+import type { LucideIcon } from 'lucide-react';
+import { Flag, Scale, Users } from 'lucide-react';
 import { DeleteVolunteerDialog } from './delete-volunteer-dialog';
 
 export interface VolunteerItem {
@@ -32,6 +34,35 @@ interface VolunteerSectionProps {
     emptyMessage: string;
     isAdmin: boolean;
     onDeleteRequest: (volunteer: { name: string; uri: string }) => void;
+}
+
+function StatCard({
+    icon: Icon,
+    label,
+    value,
+    description,
+}: Readonly<{
+    icon: LucideIcon;
+    label: string;
+    value: string;
+    description: string;
+}>) {
+    return (
+        <div className="teams-page-stat-card">
+            <div className="teams-page-stat-card__inner">
+                <div className="teams-page-stat-card__header">
+                    <div className="teams-page-stat-card__copy">
+                        <div className="teams-page-stat-card__label">{label}</div>
+                        <div className="teams-page-stat-card__value">{value}</div>
+                    </div>
+                    <div className="teams-page-stat-card__icon">
+                        <Icon aria-hidden="true" />
+                    </div>
+                </div>
+                <p className="teams-page-stat-card__description">{description}</p>
+            </div>
+        </div>
+    );
 }
 
 function filterByName(volunteers: VolunteerItem[], query: string): VolunteerItem[] {
@@ -133,6 +164,27 @@ export default function VolunteersClient({
 
     return (
         <div className="space-y-12">
+            <div className="teams-page-stats-grid">
+                <StatCard
+                    icon={Scale}
+                    label="Judges"
+                    value={String(judges.length)}
+                    description="Volunteers assigned to judging panels."
+                />
+                <StatCard
+                    icon={Flag}
+                    label="Referees"
+                    value={String(referees.length)}
+                    description="Volunteers available to referee matches."
+                />
+                <StatCard
+                    icon={Users}
+                    label="Floaters"
+                    value={String(floaters.length)}
+                    description="Flexible volunteers supporting event operations."
+                />
+            </div>
+
             <VolunteerSection
                 title="Judges"
                 typePlural="judges"
