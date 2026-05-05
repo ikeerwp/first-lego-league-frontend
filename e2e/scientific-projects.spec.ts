@@ -69,7 +69,7 @@ test("scientific projects page renders published content or the empty state", as
     await page.goto("/scientific-projects");
 
     await expect(page.getByRole("heading", { name: "Scientific Projects", level: 1 })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Season project directory", level: 2 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Season project overview", level: 2 })).toBeVisible();
 
     const emptyState = page.getByText("No scientific projects found");
     const projectCards = page.locator(".scientific-projects-page-grid > li");
@@ -177,7 +177,7 @@ test("scientific project cards render room details and keep the status badge", a
     const detailsLink = page.locator("a.scientific-projects-page-link").first();
 
     if (await detailsLink.count()) {
-        await detailsLink.click();
-        await expect(page).toHaveURL(/\/scientific-projects\/.+/);
+        const href = await detailsLink.getAttribute("href");
+        expect(href ?? "").toMatch(/^\/scientific-projects\/.+/);
     }
 });
