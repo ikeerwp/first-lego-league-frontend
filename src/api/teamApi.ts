@@ -321,4 +321,33 @@ export class TeamsService {
         console.log("UPDATE RESPONSE:", result);
         return result;
     }
+    async getTeamFloaters(teamId: string): Promise<any[]> {
+    const safeId = getSafeEncodedId(teamId);
+    return fetchHalCollection<any>(
+        `/teams/${safeId}/floaters`,
+        this.authStrategy,
+        "floaters"
+    );
+}
+
+async assignFloater(teamId: string, floaterId: number): Promise<void> {
+    const authorization = await this.authStrategy.getAuth();
+
+    const response = await fetch(`${API_BASE_URL}/teams/assign-floater`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            ...(authorization ? { Authorization: authorization } : {}),
+        },
+        body: JSON.stringify({ teamId, floaterId }),
+    });
+
+    if (!response.ok) {
+        throw new Error("Failed to assign floater");
+    }
+}
+
+async removeFloater(floaterId: number): Promise<void> {
+    await deleteHal(`/floaters/${floaterId}`, this.authStrategy);
+}
 }
