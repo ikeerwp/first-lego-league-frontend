@@ -7,6 +7,7 @@ import { CheckCircle, Trash2 } from "lucide-react";
 import { Button } from "@/app/components/button";
 import { UserEntity } from "@/types/user";
 import DeleteAdministratorDialog from "./delete-administrator-dialog";
+import CopyEmailButton from "@/app/components/copy-email-button";
 
 interface AdministratorListProps {
   readonly administrators: UserEntity[];
@@ -70,7 +71,10 @@ export default function AdministratorList({
                   </Link>
 
                   {administrator.email && (
-                    <div className="list-support">{administrator.email}</div>
+                    <div className="list-support flex items-center gap-2">
+                      {administrator.email}
+                      <CopyEmailButton email={administrator.email} />
+                    </div>
                   )}
 
                   <div className="mt-3 flex flex-wrap gap-2">
