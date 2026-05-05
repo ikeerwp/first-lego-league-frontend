@@ -202,7 +202,7 @@ export default function EditionsClient({
         new Set(
             editions.map((e) => e.state).filter((s): s is string => Boolean(s))
         )
-    ).sort();
+    ).sort((a, b) => a.localeCompare(b));
 
     return (
         <div className="space-y-8">

@@ -40,7 +40,7 @@ export default async function EditionsPage({
 
         allStates = Array.from(
             new Set(allEditions.map((e) => e.state).filter((s): s is string => Boolean(s)))
-        ).sort();
+        ).sort((a, b) => a.localeCompare(b));
 
         editions = allEditions
             .filter((e) => !stateFilter || e.state === stateFilter)
