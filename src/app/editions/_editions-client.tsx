@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import EmptyState from '@/app/components/empty-state';
 import { Input } from '@/app/components/input';
 import { ArrowUpRight, CalendarRange, MapPin, Sparkles } from 'lucide-react';
@@ -174,57 +175,84 @@ function EditionCard({ edition }: Readonly<{ edition: EditionItem }>) {
     );
 }
 
-function filterEditions(editions: EditionItem[], query: string): EditionItem[] {
-    const normalizedQuery = query.trim().toLowerCase();
+export default function EditionsClient({
+    editions,
+    initialSearch = '',
+    initialState = '',
+    allStates = [],
+}: Readonly<{
+    editions: EditionItem[];
+    initialSearch?: string;
+    initialState?: string;
+    allStates?: string[];
+}>) {
+    const router = useRouter();
+    const [searchValue, setSearchValue] = useState(initialSearch);
+    const [stateValue, setStateValue] = useState(initialState);
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    if (!normalizedQuery) {
-        return editions;
+    function updateParams(newQuery: string, newState: string) {
+        const params = new URLSearchParams();
+        if (newQuery) params.set('search', newQuery);
+        if (newState) params.set('state', newState);
+        router.push(params.toString() ? `/editions?${params}` : '/editions');
     }
 
-    return editions.filter((edition) => {
-        const searchableValues = [
-            edition.venueName,
-            edition.description,
-            edition.state,
-            edition.year !== undefined ? String(edition.year) : undefined,
-        ];
+    function handleSearchChange(value: string) {
+        setSearchValue(value);
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+            updateParams(value, stateValue);
+        }, 300);
+    }
 
-        return searchableValues.some((value) => value?.toLowerCase().includes(normalizedQuery));
-    });
-}
-
-export default function EditionsClient({ editions }: Readonly<{ editions: EditionItem[] }>) {
-    const [query, setQuery] = useState('');
-    const filtered = filterEditions(editions, query);
-    const venueCount = getUniqueValueCount(filtered.map((edition) => edition.venueName));
-    const stateCount = getUniqueValueCount(filtered.map((edition) => edition.state));
-    const latestEditionYear = getLatestEditionYear(filtered);
+    const venueCount = getUniqueValueCount(editions.map((edition) => edition.venueName));
+    const stateCount = getUniqueValueCount(editions.map((edition) => edition.state));
+    const latestEditionYear = getLatestEditionYear(editions);
 
     return (
         <div className="space-y-8">
             <div className="editions-page-search-card">
-                <label className="editions-page-search-card__field">
+                <div className="editions-page-search-card__field">
                     <span className="editions-page-search-card__label">
                         Search by year, venue or state
                     </span>
-                    <Input
-                        type="search"
-                        value={query}
-                        onChange={(event) => setQuery(event.target.value)}
-                        placeholder="Search editions..."
-                        aria-label="Search editions by year, venue or state"
-                        className="editions-page-search-input"
-                    />
-                </label>
+                    <div className="flex gap-3">
+                        <Input
+                            type="search"
+                            value={searchValue}
+                            onChange={(event) => handleSearchChange(event.target.value)}
+                            placeholder="Search editions..."
+                            aria-label="Search editions by year, venue or state"
+                            className="editions-page-search-input"
+                        />
+                        <select
+                            value={stateValue}
+                            onChange={(e) => {
+                                setStateValue(e.target.value);
+                                updateParams(searchValue, e.target.value);
+                            }}
+                            className="rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                            aria-label="Filter by state"
+                        >
+                            <option value="">All states</option>
+                            {allStates.map((s) => (
+                                <option key={s} value={s}>
+                                    {formatEditionState(s)}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
             </div>
 
             <div className="editions-page-stats-grid">
                 <StatCard
                     icon={CalendarRange}
                     label="Seasons in view"
-                    value={String(filtered.length)}
+                    value={String(editions.length)}
                     description={
-                        filtered.length > 0
+                        editions.length > 0
                             ? 'The visible archive is organized as editorial season cards.'
                             : 'No season matches the current search.'
                     }
@@ -251,18 +279,20 @@ export default function EditionsClient({ editions }: Readonly<{ editions: Editio
                 />
             </div>
 
-            {filtered.length === 0 ? (
+            {editions.length === 0 ? (
                 <EmptyState
                     title="No editions found"
                     description={
-                        query.trim()
-                            ? `No editions match "${query.trim()}". Try a different year, venue or state.`
-                            : 'There are currently no editions available to display.'
+                        initialSearch.trim()
+                            ? `No editions match "${initialSearch}". Try a different year, venue or state.`
+                            : initialState
+                                ? `No editions found for the selected state. Try a different year, venue or state.`
+                                : 'There are currently no editions available to display.'
                     }
                 />
             ) : (
                 <ul className="editions-page-grid">
-                    {filtered.map((edition, index) => (
+                    {editions.map((edition, index) => (
                         <li key={edition.uri ?? index} className="editions-page-item">
                             <EditionCard edition={edition} />
                         </li>
