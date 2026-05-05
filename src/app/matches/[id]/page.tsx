@@ -7,9 +7,6 @@ import ErrorAlert from "@/app/components/error-alert";
 import PageShell from "@/app/components/page-shell";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { isAdmin, isReferee } from "@/lib/authz";
-import { getTeamDisplayName } from "@/lib/teamUtils";
-import { getEncodedResourceId } from "@/lib/halRoute";
-import { formatMatchTime } from "@/lib/matchUtils";
 import { Edition } from "@/types/edition";
 import { NotFoundError, parseErrorMessage } from "@/types/errors";
 import { Match } from "@/types/match";
@@ -17,9 +14,6 @@ import { MatchResult } from "@/types/matchResult";
 import { Round } from "@/types/round";
 import { Team } from "@/types/team";
 import { User } from "@/types/user";
-import Link from "next/link";
-import MatchDeleteSection from "./match-delete-section";
-import RecordResultForm from "./record-result-form";
 import { InfoRow } from "@/app/components/info-row";
 
 export const dynamic = "force-dynamic";
@@ -74,39 +68,28 @@ function getRoundLabel(round: Round | null, fallback?: string): string {
 
 export default async function MatchDetailPage(props: Readonly<MatchDetailPageProps>) {
     const { id } = await props.params;
-    const searchParams = await props.searchParams;
-
-    const yearParam = searchParams.year;
-    const year = Array.isArray(yearParam) ? yearParam[0] : yearParam;
-    const yearQuery = year ? `?year=${year}` : "";
 
     const service = new MatchesService(serverAuthProvider);
+    const teamsService = new TeamsService(serverAuthProvider);
+    const editionsService = new EditionsService(serverAuthProvider);
 
     let match: Match | null = null;
     let teams: Team[] = [];
     let currentUser: User | null = null;
 
     let matchError: string | null = null;
-    let teamsError: string | null = null;
-
-    let isAuthorized = false;
-
-    let formTeamA: Team | null = null;
-    let formTeamB: Team | null = null;
 
     let round: Round | null = null;
     let edition: Edition | null = null;
 
     let matchResults: MatchResult[] = [];
 
-    let teamAId = "";
-    let teamBId = "";
-    let teamADisplayName = "Team A";
-    let teamBDisplayName = "Team B";
+    let teamA: Team | null = null;
+    let teamB: Team | null = null;
 
     try {
         currentUser = await new UsersService(serverAuthProvider).getCurrentUser();
-        isAuthorized = isAdmin(currentUser) || isReferee(currentUser);
+        isAdmin(currentUser) || isReferee(currentUser);
     } catch {}
 
     try {
@@ -120,8 +103,11 @@ export default async function MatchDetailPage(props: Readonly<MatchDetailPagePro
 
     if (match && !matchError) {
         const matchUri = `${API_BASE_URL}/matches/${decodeURIComponent(id)}`;
-        const teamsService = new TeamsService(serverAuthProvider);
-        const editionsService = new EditionsService(serverAuthProvider);
+
+        const teamsPromise = teamsService.getTeams().catch(() => []);
+        const matchResultsPromise = service.getMatchResults(matchUri).catch(() => []);
+        const teamAPromise = service.getMatchTeamA(id).catch(() => null);
+        const teamBPromise = service.getMatchTeamB(id).catch(() => null);
 
         const roundDetailsPromise = service
             .getMatchRound(id)
@@ -140,35 +126,28 @@ export default async function MatchDetailPage(props: Readonly<MatchDetailPagePro
             })
             .catch(() => ({ round: null, edition: null }));
 
-        const [, roundDetails] = await Promise.all([
-            teamsService.getTeams().then((t) => (teams = t)),
-
+        const [loadedTeams, roundDetails, results, a, b] = await Promise.all([
+            teamsPromise,
             roundDetailsPromise,
-
-            service.getMatchTeamA(id).then((t) => {
-                formTeamA = t;
-                teamADisplayName = t.name ?? "Team A";
-                teamAId = decodeURIComponent(t.link("self")?.href?.split("/").pop() ?? "");
-            }).catch(() => null),
-
-            service.getMatchTeamB(id).then((t) => {
-                formTeamB = t;
-                teamBDisplayName = t.name ?? "Team B";
-                teamBId = decodeURIComponent(t.link("self")?.href?.split("/").pop() ?? "");
-            }).catch(() => null),
-
-            service.getMatchResults(matchUri).then((r) => {
-                matchResults = r;
-            }).catch(() => []),
+            matchResultsPromise,
+            teamAPromise,
+            teamBPromise,
         ]);
+
+        teams = loadedTeams;
+        matchResults = results;
+
+        teamA = a;
+        teamB = b;
 
         round = roundDetails?.round ?? null;
         edition = roundDetails?.edition ?? null;
     }
 
-    const displayEdition: string = getEditionLabel(edition);
-    const displayRound: string = getRoundLabel(round, match?.round);
-    const displayState: string = matchResults.length > 0 ? "COMPLETED" : (match?.state ?? "UNKNOWN");
+    const displayEdition = getEditionLabel(edition);
+    const displayRound = getRoundLabel(round, match?.round);
+    const displayState =
+        matchResults.length > 0 ? "COMPLETED" : (match?.state ?? "UNKNOWN");
 
     return (
         <PageShell
