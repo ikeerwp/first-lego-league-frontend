@@ -1,0 +1,500 @@
+@layer components {
+  @keyframes scientific-projects-hero-scan-pass {
+    0%,
+    16% {
+      transform: translateX(-100%) skewX(-18deg);
+      opacity: 0;
+    }
+
+    30% {
+      opacity: 0.82;
+    }
+
+    74% {
+      transform: translateX(100%) skewX(-18deg);
+      opacity: 0;
+    }
+
+    100% {
+      transform: translateX(100%) skewX(-18deg);
+      opacity: 0;
+    }
+  }
+
+  .scientific-projects-page-banner {
+    @apply relative overflow-hidden border border-border px-6 py-8 sm:px-8 sm:py-10;
+
+    isolation: isolate;
+    background:
+      radial-gradient(circle at top left, color-mix(in srgb, var(--accent) 16%, transparent) 0, transparent 34%),
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--card) 88%, var(--secondary) 12%) 0%,
+        var(--card) 56%,
+        color-mix(in srgb, var(--secondary) 70%, white 30%) 100%
+      );
+  }
+
+  .scientific-projects-page-banner::after {
+    content: "";
+    @apply pointer-events-none absolute inset-y-0;
+
+    left: 0;
+    width: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, white 58%, var(--accent) 42%) 48%,
+      transparent 100%
+    );
+    filter: blur(1px);
+    opacity: 0;
+    z-index: 0;
+  }
+
+  .scientific-projects-page-banner:hover::after {
+    animation: scientific-projects-hero-scan-pass 4.5s cubic-bezier(0.22, 1, 0.36, 1) 1;
+  }
+
+  .scientific-projects-page-banner .page-banner-grid {
+    @apply relative gap-8;
+
+    z-index: 1;
+  }
+
+  .scientific-projects-page-banner .page-title {
+    max-width: 11ch;
+    text-shadow: 0.16rem 0.16rem 0 color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+
+  .scientific-projects-page-banner .page-description {
+    max-width: 42rem;
+  }
+
+  .page-panel.scientific-projects-page-panel {
+    @apply border-0 bg-transparent p-0;
+  }
+
+  .scientific-projects-page-create-button,
+  .scientific-projects-page-search-shell,
+  .scientific-projects-page-stat-card,
+  .scientific-projects-page-project-card,
+  .scientific-projects-page-pagination {
+    clip-path: polygon(0 0, calc(100% - 1rem) 0, 100% 1rem, 100% 100%, 0 100%);
+  }
+
+  .scientific-projects-page-create-button {
+    @apply justify-between px-5 py-4 text-left text-sm;
+
+    box-shadow: 12px 12px 0 color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+
+  .scientific-projects-page-create-button__label {
+    @apply inline-flex items-center gap-2;
+  }
+
+  .scientific-projects-page-create-button svg {
+    transition: transform 220ms ease;
+  }
+
+  .scientific-projects-page-create-button:hover svg {
+    transform: translate(0.16rem, -0.16rem);
+  }
+
+  .scientific-projects-page-content {
+    @apply space-y-8;
+  }
+
+  .scientific-projects-page-search-shell {
+    @apply grid gap-6 border px-5 py-5 sm:px-6 sm:py-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)];
+
+    border-color: color-mix(in srgb, var(--accent) 16%, var(--border));
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--card) 95%, white 5%) 0%, var(--card) 100%);
+    box-shadow: 12px 12px 0 color-mix(in srgb, var(--secondary) 74%, transparent);
+  }
+
+  .scientific-projects-page-search-copy {
+    @apply space-y-4;
+  }
+
+  .scientific-projects-page-search-description {
+    @apply max-w-[40rem];
+  }
+
+  .scientific-projects-page-filter-chips {
+    @apply flex flex-wrap gap-2;
+  }
+
+  .scientific-projects-page-filter-chip {
+    @apply inline-flex items-center border px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.16em];
+
+    border-color: color-mix(in srgb, var(--accent) 20%, transparent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent);
+  }
+
+  .scientific-projects-page-search {
+    @apply self-start border px-4 py-4 sm:px-5;
+
+    border-color: color-mix(in srgb, var(--accent) 14%, var(--border));
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent) 0%, transparent 100%);
+  }
+
+  .scientific-projects-page-search form {
+    @apply gap-3;
+  }
+
+  .scientific-projects-page-search [data-slot="input"] {
+    @apply border bg-background;
+
+    border-color: color-mix(in srgb, var(--accent) 16%, var(--border));
+  }
+
+  .scientific-projects-page-search form button {
+    @apply justify-between;
+  }
+
+  .scientific-projects-page-search-meta {
+    @apply flex flex-col gap-3 border-t pt-4;
+
+    border-color: color-mix(in srgb, var(--accent) 14%, var(--border));
+  }
+
+  .scientific-projects-page-search-note {
+    @apply text-sm leading-6 text-muted-foreground;
+  }
+
+  .scientific-projects-page-reset-button {
+    @apply w-full sm:w-auto;
+  }
+
+  .scientific-projects-page-stats-grid {
+    @apply grid gap-4 md:grid-cols-3;
+  }
+
+  .scientific-projects-page-stat-card {
+    @apply relative overflow-hidden border px-5 py-5 sm:px-6 sm:py-6;
+
+    border-color: color-mix(in srgb, var(--accent) 14%, var(--border));
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--card) 92%, white 8%) 0%, var(--card) 100%);
+    box-shadow: 10px 10px 0 color-mix(in srgb, var(--secondary) 70%, transparent);
+    transition:
+      transform 220ms ease,
+      border-color 220ms ease,
+      box-shadow 220ms ease;
+  }
+
+  .scientific-projects-page-stat-card::before {
+    content: "";
+    @apply absolute inset-x-0 top-0 h-1.5;
+
+    background: var(--accent);
+  }
+
+  .scientific-projects-page-stat-card:nth-child(1)::before {
+    background: var(--accent);
+  }
+
+  .scientific-projects-page-stat-card:nth-child(2)::before {
+    background: var(--primary);
+  }
+
+  .scientific-projects-page-stat-card:nth-child(3)::before {
+    background: color-mix(in srgb, var(--accent) 68%, var(--primary));
+  }
+
+  .scientific-projects-page-stat-card:hover {
+    transform: translate(0.2rem, -0.2rem);
+    border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+    box-shadow: 14px 14px 0 color-mix(in srgb, var(--secondary) 88%, transparent);
+  }
+
+  .scientific-projects-page-stat-card__inner {
+    @apply relative flex h-full flex-col gap-8;
+
+    z-index: 1;
+  }
+
+  .scientific-projects-page-stat-card__header {
+    @apply flex items-start justify-between gap-4;
+  }
+
+  .scientific-projects-page-stat-card__copy {
+    @apply space-y-2;
+  }
+
+  .scientific-projects-page-stat-card__label {
+    @apply text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-secondary-foreground;
+  }
+
+  .scientific-projects-page-stat-card__value {
+    @apply text-4xl font-semibold leading-none tracking-[-0.08em] text-foreground;
+
+    font-variant-numeric: tabular-nums;
+  }
+
+  .scientific-projects-page-stat-card__icon {
+    @apply flex size-12 items-center justify-center border text-secondary-foreground;
+
+    border-color: color-mix(in srgb, var(--accent) 16%, transparent);
+    background: color-mix(in srgb, var(--secondary) 72%, white 28%);
+  }
+
+  .scientific-projects-page-stat-card__icon svg {
+    @apply size-5;
+  }
+
+  .scientific-projects-page-stat-card__description {
+    @apply max-w-[34ch] text-sm leading-6 text-muted-foreground;
+  }
+
+  .scientific-projects-page-roster-head {
+    @apply flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-end sm:justify-between;
+
+    border-color: color-mix(in srgb, var(--accent) 16%, var(--border));
+  }
+
+  .scientific-projects-page-roster-copy {
+    @apply max-w-[32rem] text-sm leading-6 text-muted-foreground;
+  }
+
+  .scientific-projects-page-grid {
+    @apply grid gap-5 xl:grid-cols-2;
+  }
+
+  .scientific-projects-page-item {
+    @apply h-full;
+  }
+
+  .scientific-projects-page-link {
+    @apply block h-full text-inherit no-underline;
+  }
+
+  .scientific-projects-page-link:focus-visible {
+    outline: none;
+  }
+
+  .scientific-projects-page-project-card {
+    --project-accent: var(--accent);
+    --project-soft: color-mix(in srgb, var(--accent) 12%, transparent);
+
+    @apply relative flex h-full overflow-hidden border px-5 py-5 sm:px-6 sm:py-6;
+
+    border-color: color-mix(in srgb, var(--project-accent) 16%, var(--border));
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--card) 94%, white 6%) 0%, var(--card) 100%),
+      linear-gradient(120deg, transparent 0%, color-mix(in srgb, var(--project-accent) 14%, transparent) 47%, transparent 60%);
+    background-size:
+      100% 100%,
+      220% 100%;
+    background-position:
+      0 0,
+      150% 0;
+    box-shadow: 12px 12px 0 color-mix(in srgb, var(--secondary) 72%, transparent);
+    transition:
+      transform 220ms ease,
+      border-color 220ms ease,
+      box-shadow 220ms ease,
+      background 220ms ease,
+      background-position 560ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .scientific-projects-page-project-card::before {
+    content: "";
+    @apply absolute inset-y-0 left-0 w-2;
+
+    background: var(--project-accent);
+  }
+
+  .scientific-projects-page-project-card::after {
+    content: "";
+    @apply pointer-events-none absolute right-4 top-4 h-16 w-16;
+
+    border-right: 1px solid color-mix(in srgb, var(--project-accent) 20%, transparent);
+    border-top: 1px solid color-mix(in srgb, var(--project-accent) 20%, transparent);
+  }
+
+  .scientific-projects-page-project-card[data-status="evaluated"] {
+    --project-accent: var(--primary);
+  }
+
+  .scientific-projects-page-project-card[data-status="assigned"] {
+    --project-accent: color-mix(in srgb, var(--primary) 72%, var(--accent));
+  }
+
+  .scientific-projects-page-project-card[data-status="pending"] {
+    --project-accent: var(--accent);
+  }
+
+  .scientific-projects-page-link:hover .scientific-projects-page-project-card {
+    transform: translate(0.28rem, -0.28rem);
+    border-color: color-mix(in srgb, var(--project-accent) 40%, var(--border));
+    box-shadow: 16px 16px 0 var(--project-soft);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--project-accent) 4%, var(--card)) 0%, var(--card) 100%),
+      linear-gradient(120deg, transparent 0%, color-mix(in srgb, var(--project-accent) 18%, transparent) 47%, transparent 60%);
+    background-position:
+      0 0,
+      -30% 0;
+  }
+
+  .scientific-projects-page-link:focus-visible .scientific-projects-page-project-card {
+    border-color: var(--project-accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--project-accent) 24%, transparent);
+  }
+
+  .scientific-projects-page-project-card__body {
+    @apply relative flex h-full w-full flex-col gap-5;
+
+    z-index: 1;
+  }
+
+  .scientific-projects-page-project-card__masthead {
+    @apply flex flex-wrap items-start justify-between gap-3;
+  }
+
+  .scientific-projects-page-project-card__serial {
+    @apply text-[0.72rem] font-semibold uppercase tracking-[0.18em];
+
+    color: var(--project-accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .scientific-projects-page-project-card__badge {
+    @apply inline-flex items-center border px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.16em];
+
+    border-color: color-mix(in srgb, var(--project-accent) 22%, transparent);
+    background: color-mix(in srgb, var(--project-accent) 10%, transparent);
+    color: var(--project-accent);
+  }
+
+  .scientific-projects-page-project-card__header {
+    @apply space-y-3;
+  }
+
+  .scientific-projects-page-project-card__kicker {
+    @apply text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-secondary-foreground;
+  }
+
+  .scientific-projects-page-project-card__title {
+    @apply text-3xl font-semibold leading-tight tracking-[-0.05em] text-foreground;
+  }
+
+  .scientific-projects-page-project-card__summary {
+    @apply max-w-[56ch] text-sm leading-7 text-muted-foreground;
+  }
+
+  .scientific-projects-page-project-card__facts {
+    @apply grid items-stretch gap-0 border-y py-4 sm:grid-cols-2;
+
+    border-color: color-mix(in srgb, var(--project-accent) 16%, var(--border));
+  }
+
+  .scientific-projects-page-project-card__fact {
+    @apply flex min-w-0 flex-col items-center justify-center border-l px-4 py-1 text-center;
+
+    border-color: color-mix(in srgb, var(--project-accent) 24%, transparent);
+  }
+
+  .scientific-projects-page-project-card__fact:first-child {
+    @apply border-l-0;
+  }
+
+  .scientific-projects-page-project-card__fact-label {
+    @apply text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-secondary-foreground;
+  }
+
+  .scientific-projects-page-project-card__fact-value {
+    @apply mt-2 max-w-[18ch] text-sm font-medium leading-6 text-foreground;
+  }
+
+  .scientific-projects-page-project-card__team {
+    @apply relative overflow-hidden border px-4 py-4;
+
+    border-color: color-mix(in srgb, var(--project-accent) 20%, var(--border));
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--project-accent) 8%, transparent) 0%, transparent 100%);
+  }
+
+  .scientific-projects-page-project-card__team::before {
+    content: "";
+    @apply absolute inset-y-0 left-0 w-1.5;
+
+    background: color-mix(in srgb, var(--project-accent) 76%, white 24%);
+  }
+
+  .scientific-projects-page-project-card__team-label {
+    @apply pl-2 text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-secondary-foreground;
+  }
+
+  .scientific-projects-page-project-card__team-value {
+    @apply mt-2 pl-2 text-base leading-7 text-foreground;
+  }
+
+  .scientific-projects-page-project-card__footer {
+    @apply mt-auto flex items-center justify-between gap-4 border-t pt-4;
+
+    border-color: color-mix(in srgb, var(--project-accent) 16%, var(--border));
+  }
+
+  .scientific-projects-page-project-card__action {
+    @apply inline-flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em];
+
+    transition:
+      gap 220ms ease,
+      color 220ms ease;
+  }
+
+  .scientific-projects-page-project-card__action svg {
+    @apply size-4;
+  }
+
+  .scientific-projects-page-project-card__action--interactive {
+    color: var(--project-accent);
+  }
+
+  .scientific-projects-page-project-card__action--disabled {
+    color: var(--muted-foreground);
+  }
+
+  .scientific-projects-page-link:hover .scientific-projects-page-project-card__action--interactive {
+    gap: 0.8rem;
+  }
+
+  .scientific-projects-page-pagination {
+    @apply px-1 pt-1;
+
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scientific-projects-page-banner::after {
+      animation: none;
+    }
+
+    .scientific-projects-page-banner:hover::after {
+      animation: none;
+    }
+
+    .scientific-projects-page-create-button svg,
+    .scientific-projects-page-project-card,
+    .scientific-projects-page-project-card__action {
+      transition-duration: 0.01ms;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .scientific-projects-page-banner .page-title {
+      max-width: 12ch;
+    }
+
+    .scientific-projects-page-project-card__title {
+      max-width: none;
+    }
+  }
+}

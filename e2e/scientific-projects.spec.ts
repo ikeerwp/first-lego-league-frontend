@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 import { ScientificProjectsService } from "../src/api/scientificProjectApi";
 import { createUserViaApi } from "./utils/api";
 import { loginViaUi } from "./utils/auth";
@@ -8,10 +9,10 @@ test("scientific projects page renders published content or the empty state", as
     await page.goto("/scientific-projects");
 
     await expect(page.getByRole("heading", { name: "Scientific Projects", level: 1 })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Season projects overview", level: 2 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Season project directory", level: 2 })).toBeVisible();
 
     const emptyState = page.getByText("No scientific projects found");
-    const projectCards = page.locator("tbody > tr");
+    const projectCards = page.locator(".scientific-projects-page-grid > li");
 
     await expect(emptyState.or(projectCards.first())).toBeVisible();
 });
@@ -92,6 +93,18 @@ test("scientific project team-name search falls back to partial team id matches"
     }
 });
 
+test("scientific project status colors map evaluated to red and pending review to blue", async () => {
+    const cssFileUrl = new URL("../src/css/scientific-projects-list.css", import.meta.url);
+    const css = await readFile(cssFileUrl, "utf8");
+
+    expect(css).toMatch(
+        /\.scientific-projects-page-project-card\[data-status="evaluated"\]\s*\{\s*--project-accent:\s*var\(--primary\);/
+    );
+    expect(css).toMatch(
+        /\.scientific-projects-page-project-card\[data-status="pending"\]\s*\{\s*--project-accent:\s*var\(--accent\);/
+    );
+});
+
 test("authenticated users can open the new scientific project form", async ({ page, request }) => {
     const user = createTestUser("scientific-project");
 
@@ -99,9 +112,9 @@ test("authenticated users can open the new scientific project form", async ({ pa
     await loginViaUi(page, user);
 
     await page.goto("/scientific-projects");
-    await expect(page.getByRole("link", { name: "New Project", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "New project", exact: true })).toBeVisible();
 
-    await page.getByRole("link", { name: "New Project", exact: true }).click();
+    await page.getByRole("link", { name: "New project", exact: true }).click();
 
     await expect(page).toHaveURL(/\/scientific-projects\/new$/);
     await expect(page.getByRole("heading", { name: "New Scientific Project", level: 1 })).toBeVisible();
@@ -110,36 +123,33 @@ test("authenticated users can open the new scientific project form", async ({ pa
     await expect(page.getByLabel("Team")).toBeVisible();
 });
 
-test("displays room column and correctly renders assigned or unassigned states", async ({ page }) => {
-    // Note: ScientificProjectsPage is a Next.js Server Component. 
-    // We dynamically verify the existing rows since we cannot intercept the server's fetch.
+test("scientific project cards render room details and keep the status badge", async ({ page }) => {
     await page.goto("/scientific-projects");
 
-    // The Room column header must always be visible
-    await expect(page.getByRole("columnheader", { name: "Room" })).toBeVisible();
-
     const emptyState = page.getByText("No scientific projects found");
-    const projectRows = page.locator("tbody > tr");
+    const projectCards = page.locator(".scientific-projects-page-project-card");
 
     if (await emptyState.isVisible()) {
-        return; // Nothing further to test if there are no projects
+        return;
     }
 
-    // Verify the first row correctly handles the room cell rendering (either a link or "—")
-    const firstRow = projectRows.first();
-    const roomCell = firstRow.locator("td").nth(2);
+    const firstCard = projectCards.first();
 
-    const hasDash = await roomCell.getByText("—", { exact: true }).isVisible();
-    const hasLink = await roomCell.getByRole("link").isVisible();
-    
-    expect(hasDash || hasLink).toBeTruthy();
+    await expect(firstCard.getByText("Room", { exact: true })).toBeVisible();
+    await expect(firstCard.getByText(/Evaluated|Room assigned|Pending review/)).toBeVisible();
+    await expect(firstCard.getByText(/Awaiting score|\d+\spts/)).toBeVisible();
 
-    if (hasLink) {
-        const href = await roomCell.getByRole("link").getAttribute("href");
-        expect(href).toMatch(/\/project-rooms\/.+/);
+    const roomFactText = await firstCard
+        .locator(".scientific-projects-page-project-card__fact")
+        .nth(1)
+        .textContent();
 
-        // Test navigation
-        await roomCell.getByRole("link").click();
-        await expect(page).toHaveURL(/\/project-rooms\/.+/);
+    expect(roomFactText ?? "").toMatch(/Room|Pending assignment/);
+
+    const detailsLink = page.locator("a.scientific-projects-page-link").first();
+
+    if (await detailsLink.count()) {
+        await detailsLink.click();
+        await expect(page).toHaveURL(/\/scientific-projects\/.+/);
     }
 });
