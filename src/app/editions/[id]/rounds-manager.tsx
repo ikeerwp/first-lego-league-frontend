@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, Plus } from "lucide-react";
 import { Button } from "@/app/components/button";
@@ -10,7 +10,6 @@ import ConfirmDestructiveDialog from "@/app/components/confirm-destructive-dialo
 import { RoundsService } from "@/api/roundsApi";
 import { clientAuthProvider } from "@/lib/authProvider";
 import { ConflictError, parseErrorMessage } from "@/types/errors";
-import { getEncodedResourceId } from "@/lib/halRoute";
 
 interface RoundItem {
     uri?: string;
@@ -32,6 +31,18 @@ export default function RoundsManager({ initialRounds, isAdmin }: RoundsManagerP
     const [isCreating, setIsCreating] = useState(false);
     const [roundToDelete, setRoundToDelete] = useState<RoundItem | null>(null);
     const [deleteError, setDeleteError] = useState<string | null>(null);
+
+    useEffect(() => {
+        function handleKeyDown(event: KeyboardEvent) {
+            if (event.key === "Escape" && !isCreating) {
+                setIsCreateOpen(false);
+            }
+        }
+        if (isCreateOpen) {
+            globalThis.addEventListener("keydown", handleKeyDown);
+            return () => globalThis.removeEventListener("keydown", handleKeyDown);
+        }
+    }, [isCreateOpen, isCreating]);
 
     function openCreate() {
         setRoundNumber("");
@@ -67,11 +78,11 @@ export default function RoundsManager({ initialRounds, isAdmin }: RoundsManagerP
     async function handleDelete() {
         if (!roundToDelete) return;
         setDeleteError(null);
-        const id = getEncodedResourceId(roundToDelete.uri);
-        if (!id) return;
+        const rawId = roundToDelete.uri?.split("/").filter(Boolean).at(-1);
+        if (!rawId) return;
         try {
             const service = new RoundsService(clientAuthProvider);
-            await service.deleteRound(id);
+            await service.deleteRound(rawId);
             setRounds((prev) => prev.filter((r) => r.uri !== roundToDelete.uri));
             setRoundToDelete(null);
             router.refresh();
@@ -92,7 +103,7 @@ export default function RoundsManager({ initialRounds, isAdmin }: RoundsManagerP
                 <div className="mb-4">
                     <Button size="sm" onClick={openCreate}>
                         <Plus className="mr-2 h-4 w-4" />
-                        Add Round
+                        Create Round
                     </Button>
                 </div>
             )}
@@ -140,8 +151,15 @@ export default function RoundsManager({ initialRounds, isAdmin }: RoundsManagerP
                         }
                     }}
                 >
-                    <div className="w-full max-w-sm border border-border bg-card p-6 shadow-xl">
-                        <h2 className="mb-4 text-lg font-semibold">Create Round</h2>
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="create-round-title"
+                        className="w-full max-w-sm border border-border bg-card p-6 shadow-xl"
+                    >
+                        <h2 id="create-round-title" className="mb-4 text-lg font-semibold">
+                            Create Round
+                        </h2>
                         <form onSubmit={handleCreate} className="space-y-4">
                             {createError && (
                                 <p className="text-sm text-destructive" role="alert">
