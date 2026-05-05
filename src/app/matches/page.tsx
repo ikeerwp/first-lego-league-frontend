@@ -2,6 +2,7 @@ import { EditionsService } from "@/api/editionApi";
 import { MatchesService } from "@/api/matchesApi";
 import { UsersService } from "@/api/userApi";
 import { buttonVariants } from "@/app/components/button";
+import { Input } from "@/app/components/input";
 import EmptyState from "@/app/components/empty-state";
 import ErrorAlert from "@/app/components/error-alert";
 import PageShell from "@/app/components/page-shell";
@@ -9,6 +10,7 @@ import PaginationControls from "@/app/components/pagination-controls";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { isAdmin } from "@/lib/authz";
 import { getEncodedResourceId } from "@/lib/halRoute";
+import { filterMatchesByTeam, normalizeTeamSearch } from "@/lib/matchFilter";
 import { formatMatchTime } from "@/lib/matchUtils";
 import { parseErrorMessage } from "@/types/errors";
 import type { HalPage } from "@/types/pagination";
@@ -41,6 +43,50 @@ function getMatchKey(match: Match, index: number) {
 
 function compareMatchTimes(left: string = "", right: string = "") {
     return left.localeCompare(right);
+}
+
+function getSearchValue(value: string | string[] | undefined) {
+    return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+function MatchesTeamFilter({ query, year, view }: Readonly<{ query: string; year?: string; view?: string }>) {
+    const resetParams = new URLSearchParams();
+    if (year) resetParams.set("year", year);
+    if (view === "calendar") resetParams.set("view", view);
+    const resetHref = resetParams.toString() ? `/matches?${resetParams.toString()}` : "/matches";
+
+    return (
+        <form action="/matches" className="flex flex-col gap-3 border border-border bg-card p-4 sm:flex-row sm:items-end">
+            {year ? <input type="hidden" name="year" value={year} /> : null}
+            {view === "calendar" ? <input type="hidden" name="view" value={view} /> : null}
+            <div className="min-w-0 flex-1 space-y-2">
+                <label htmlFor="team-search" className="text-sm font-medium text-foreground">
+                    Team filter
+                </label>
+                <Input
+                    id="team-search"
+                    name="team"
+                    type="search"
+                    defaultValue={query}
+                    placeholder="Search by team name..."
+                    autoComplete="off"
+                />
+            </div>
+            <div className="flex gap-2">
+                <button type="submit" className={buttonVariants({ variant: "secondary", size: "default" })}>
+                    Search
+                </button>
+                {query ? (
+                    <Link
+                        href={resetHref}
+                        className={buttonVariants({ variant: "ghost", size: "default" })}
+                    >
+                        Reset
+                    </Link>
+                ) : null}
+            </div>
+        </form>
+    );
 }
 
 function MatchesTable({ matches, labels, yearQuery }: Readonly<{ matches: Match[]; labels: Record<string, string>; yearQuery: string }>) {
@@ -123,6 +169,8 @@ export default async function MatchesPage({ searchParams }: Readonly<{ searchPar
     const viewParam = params.view;
     const view = Array.isArray(viewParam) ? viewParam[0] : viewParam;
     const isCalendarView = view === "calendar";
+    const teamQuery = normalizeTeamSearch(getSearchValue(params.team));
+    const hasTeamFilter = teamQuery.length > 0;
 
     let matches: Match[] = [];
     let matchLabels: Record<string, string> = {};
@@ -155,6 +203,8 @@ export default async function MatchesPage({ searchParams }: Readonly<{ searchPar
                     return String(left.id ?? "").localeCompare(String(right.id ?? ""));
                 });
             }
+        } else if (hasTeamFilter) {
+            matches = await service.getMatches();
         } else {
             result = await service.getMatchesPaged(urlPage - 1, PAGE_SIZE);
             matches = result.items;
@@ -200,6 +250,8 @@ export default async function MatchesPage({ searchParams }: Readonly<{ searchPar
             return acc;
         }, {} as Record<string, string>);
 
+        matches = filterMatchesByTeam(matches, matchLabels, teamQuery);
+
     } catch (fetchError) {
         console.error("Failed to fetch matches:", fetchError);
         error = getFriendlyMatchesError(fetchError);
@@ -208,6 +260,7 @@ export default async function MatchesPage({ searchParams }: Readonly<{ searchPar
     function buildViewUrl(newView: string) {
         const urlParams = new URLSearchParams();
         if (year) urlParams.set("year", year);
+        if (teamQuery) urlParams.set("team", teamQuery);
         if (newView === "calendar") urlParams.set("view", "calendar");
         if (urlPage > 1 && newView !== "calendar") urlParams.set("page", String(urlPage));
         const qs = urlParams.toString();
@@ -268,10 +321,12 @@ export default async function MatchesPage({ searchParams }: Readonly<{ searchPar
 
                 {error && <ErrorAlert message={error} />}
 
+                {!error && <MatchesTeamFilter query={teamQuery} year={year} view={view} />}
+
                 {!error && matches.length === 0 && (
                     <EmptyState
-                        title="No matches available"
-                        description="There are no scheduled matches yet."
+                        title={hasTeamFilter ? "No matches found for this team" : "No matches available"}
+                        description={hasTeamFilter ? "Try another team name or clear the filter." : "There are no scheduled matches yet."}
                     />
                 )}
 
@@ -282,7 +337,7 @@ export default async function MatchesPage({ searchParams }: Readonly<{ searchPar
                         ) : (
                             <MatchesTable matches={matches} labels={matchLabels} yearQuery={yearQuery} />
                         )}
-                        {!year && !isCalendarView && (
+                        {!year && !isCalendarView && !hasTeamFilter && (
                             <PaginationControls
                                 currentPage={urlPage}
                                 hasNext={result.hasNext}
