@@ -26,7 +26,6 @@ import {
     fetchHalPagedCollection,
     fetchHalResource,
     putHal,
-    updateHalResource,
 } from "./halClient";
 
 function getSafeEncodedId(id: string): string {
@@ -53,19 +52,25 @@ export interface UpdateMemberPayload {
     role: string;
 }
 
+export interface Floater {
+    id: number;
+    name?: string;
+    studentCode?: string;
+}
+
 export class TeamsService {
-    constructor(private readonly authStrategy: AuthStrategy) { }
+    constructor(private readonly authStrategy: AuthStrategy) {}
 
     async getTeams(): Promise<Team[]> {
         return fetchHalCollection<Team>("/teams", this.authStrategy, "teams");
     }
 
     async getTeamsByEdition(editionUri: string): Promise<Team[]> {
-        return fetchHalCollection<Team>(editionUri, this.authStrategy, 'teams');
+        return fetchHalCollection<Team>(editionUri, this.authStrategy, "teams");
     }
 
     async getTeamsPaged(page: number, size: number): Promise<HalPage<Team>> {
-        return fetchHalPagedCollection<Team>('/teams', this.authStrategy, 'teams', page, size);
+        return fetchHalPagedCollection<Team>("/teams", this.authStrategy, "teams", page, size);
     }
 
     async getTeamById(id: string): Promise<Team> {
@@ -91,7 +96,11 @@ export class TeamsService {
 
     async getTeamCoach(id: string): Promise<TeamCoach[]> {
         const teamId = getSafeEncodedId(id);
-        return fetchHalCollection<TeamCoach>(`/teams/${teamId}/trainedBy`, this.authStrategy, "coaches");
+        return fetchHalCollection<TeamCoach>(
+            `/teams/${teamId}/trainedBy`,
+            this.authStrategy,
+            "coaches"
+        );
     }
 
     async getTeamMembers(teamId: string): Promise<TeamMember[]> {
@@ -147,9 +156,7 @@ export class TeamsService {
     async getCoachByEmail(emailAddress: string): Promise<TeamCoach | null> {
         const normalizedEmail = emailAddress.trim();
 
-        if (!normalizedEmail) {
-            return null;
-        }
+        if (!normalizedEmail) return null;
 
         try {
             return await fetchHalResource<TeamCoach>(
@@ -157,10 +164,7 @@ export class TeamsService {
                 this.authStrategy
             );
         } catch (error) {
-            if (error instanceof NotFoundError) {
-                return null;
-            }
-
+            if (error instanceof NotFoundError) return null;
             throw error;
         }
     }
@@ -177,17 +181,11 @@ export class TeamsService {
                     "Content-Type": "application/json",
                     ...(authorization ? { Authorization: authorization } : {}),
                 },
-                body: JSON.stringify({
-                    teamId,
-                    coachId,
-                }),
+                body: JSON.stringify({ teamId, coachId }),
                 cache: "no-store",
             });
         } catch (error) {
-            if (error instanceof TypeError) {
-                throw new NetworkError(undefined, error);
-            }
-
+            if (error instanceof TypeError) throw new NetworkError(undefined, error);
             throw error;
         }
 
@@ -225,11 +223,7 @@ export class TeamsService {
             case 504:
                 throw new ServerError(errorMessage, response.status);
             default:
-                throw new ApiError(
-                    errorMessage ?? "Failed to assign coach to team.",
-                    response.status,
-                    true
-                );
+                throw new ApiError(errorMessage ?? "Failed to assign coach to team.", response.status, true);
         }
     }
 
@@ -249,6 +243,7 @@ export class TeamsService {
     async removeTeamMember(memberUri: string): Promise<void> {
         await deleteHal(memberUri, this.authStrategy);
     }
+
     async updateTeam(id: string, data: Partial<CreateTeamPayload>): Promise<Team> {
         const teamId = getSafeEncodedId(id);
         const authorization = await this.authStrategy.getAuth();
@@ -274,9 +269,7 @@ export class TeamsService {
                 cache: "no-store",
             });
         } catch (error) {
-            if (error instanceof TypeError) {
-                throw new NetworkError(undefined, error);
-            }
+            if (error instanceof TypeError) throw new NetworkError(undefined, error);
             throw error;
         }
 
@@ -309,45 +302,40 @@ export class TeamsService {
                 case 504:
                     throw new ServerError(message, response.status);
                 default:
-                    throw new ApiError(
-                        message ?? "Failed to update team.",
-                        response.status,
-                        true
-                    );
+                    throw new ApiError(message ?? "Failed to update team.", response.status, true);
             }
         }
 
-        const result = await response.json();
-        console.log("UPDATE RESPONSE:", result);
-        return result;
+        return await response.json();
     }
-    async getTeamFloaters(teamId: string): Promise<any[]> {
-    const safeId = getSafeEncodedId(teamId);
-    return fetchHalCollection<any>(
-        `/teams/${safeId}/floaters`,
-        this.authStrategy,
-        "floaters"
-    );
-}
 
-async assignFloater(teamId: string, floaterId: number): Promise<void> {
-    const authorization = await this.authStrategy.getAuth();
-
-    const response = await fetch(`${API_BASE_URL}/teams/assign-floater`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            ...(authorization ? { Authorization: authorization } : {}),
-        },
-        body: JSON.stringify({ teamId, floaterId }),
-    });
-
-    if (!response.ok) {
-        throw new Error("Failed to assign floater");
+    async getTeamFloaters(teamId: string): Promise<Floater[]> {
+        const safeId = getSafeEncodedId(teamId);
+        return fetchHalCollection<Floater>(
+            `/teams/${safeId}/floaters`,
+            this.authStrategy,
+            "floaters"
+        );
     }
-}
 
-async removeFloater(floaterId: number): Promise<void> {
-    await deleteHal(`/floaters/${floaterId}`, this.authStrategy);
-}
+    async assignFloater(teamId: string, floaterId: number): Promise<void> {
+        const authorization = await this.authStrategy.getAuth();
+
+        const response = await fetch(`${API_BASE_URL}/teams/assign-floater`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...(authorization ? { Authorization: authorization } : {}),
+            },
+            body: JSON.stringify({ teamId, floaterId }),
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to assign floater");
+        }
+    }
+
+    async removeFloater(floaterId: number): Promise<void> {
+        await deleteHal(`/floaters/${floaterId}`, this.authStrategy);
+    }
 }

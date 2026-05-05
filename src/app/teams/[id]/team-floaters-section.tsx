@@ -1,16 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { TeamsService } from "@/api/teamApi";
+import { TeamsService, type Floater } from "@/api/teamApi";
 import { clientAuthProvider } from "@/lib/authProvider";
 import ConfirmDestructiveDialog from "@/app/components/confirm-destructive-dialog";
 import { Button } from "@/app/components/button";
-
-interface Floater {
-    id: number;
-    name?: string;
-    studentCode?: string;
-}
 
 interface Props {
     teamId: string;
@@ -29,23 +23,23 @@ export default function TeamFloatersSection({ teamId, isAdmin }: Props) {
     const [selectedFloater, setSelectedFloater] = useState<Floater | null>(null);
     const [removing, setRemoving] = useState(false);
 
-    async function loadFloaters() {
-        try {
-            setLoading(true);
-            setError(null);
-
-            const data = await service.getTeamFloaters(teamId);
-            setFloaters(data ?? []);
-        } catch {
-            setError("Could not load floaters");
-        } finally {
-            setLoading(false);
-        }
-    }
-
     useEffect(() => {
+        const loadFloaters = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+
+                const data = await service.getTeamFloaters(teamId);
+                setFloaters(data ?? []);
+            } catch {
+                setError("Could not load floaters");
+            } finally {
+                setLoading(false);
+            }
+        };
+
         loadFloaters();
-    }, [teamId]);
+    }, [teamId, service]);
 
     async function handleRemove() {
         if (!selectedFloater) return;
@@ -54,7 +48,9 @@ export default function TeamFloatersSection({ teamId, isAdmin }: Props) {
             setRemoving(true);
             await service.removeFloater(selectedFloater.id);
             setSelectedFloater(null);
-            await loadFloaters();
+
+            const data = await service.getTeamFloaters(teamId);
+            setFloaters(data ?? []);
         } catch {
             setError("Failed to remove floater");
         } finally {
