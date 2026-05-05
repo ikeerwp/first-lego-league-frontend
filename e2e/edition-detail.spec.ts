@@ -51,7 +51,7 @@ test("edition detail page renders the participating teams section or an empty st
         page.getByRole("heading", { name: "Participating Teams", level: 2 }),
     ).toBeVisible();
 
-    const teamItem = page.locator("ul li").first();
+    const teamItem = page.locator("h2:has-text('Participating Teams') ~ ul li").first();
     const teamsEmptyState = page.getByText("No teams are registered for this edition yet.");
 
     await expect(teamItem.or(teamsEmptyState)).toBeVisible();
