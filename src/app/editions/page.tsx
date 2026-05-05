@@ -2,7 +2,6 @@ import { EditionsService } from "@/api/editionApi";
 import { UsersService } from "@/api/userApi";
 import PageShell from "@/app/components/page-shell";
 import ErrorAlert from "@/app/components/error-alert";
-import PaginationControls from "@/app/components/pagination-controls";
 import { buttonVariants } from "@/app/components/button";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { isAdmin } from "@/lib/authz";
@@ -15,21 +14,19 @@ import EditionsClient, { EditionItem } from "./_editions-client";
 
 export const dynamic = "force-dynamic";
 
-const PAGE_SIZE = 6;
-
 type PageSearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export default async function EditionsPage({
     searchParams,
 }: Readonly<{ searchParams: PageSearchParams }>) {
     const params = await searchParams;
-    const urlPage = Math.max(1, Number(params.page ?? "1") || 1);
+    const stateFilter = typeof params.state === "string" ? params.state : "";
+    const searchFilter = typeof params.search === "string" ? params.search : "";
 
     let editions: EditionItem[] = [];
     let error: string | null = null;
     let currentUser: User | null = null;
-    let hasNext = false;
-    let hasPrev = false;
+    let allStates: string[] = [];
 
     try {
         currentUser = await new UsersService(serverAuthProvider).getCurrentUser();
@@ -39,16 +36,30 @@ export default async function EditionsPage({
 
     try {
         const service = new EditionsService(serverAuthProvider);
-        const data = await service.getEditionsPaged(urlPage - 1, PAGE_SIZE);
-        hasNext = data.hasNext;
-        hasPrev = data.hasPrev;
-        editions = data.items.map(e => ({
-            uri: e.uri,
-            year: e.year,
-            venueName: e.venueName,
-            description: e.description,
-            state: e.state,
-        }));
+        const allEditions = await service.getEditions();
+
+        allStates = Array.from(
+            new Set(allEditions.map((e) => e.state).filter((s): s is string => Boolean(s)))
+        ).sort((a, b) => a.localeCompare(b));
+
+        editions = allEditions
+            .filter((e) => !stateFilter || e.state === stateFilter)
+            .filter((e) => {
+                if (!searchFilter.trim()) return true;
+                const q = searchFilter.trim().toLowerCase();
+                return (
+                    e.venueName?.toLowerCase().includes(q) ||
+                    e.description?.toLowerCase().includes(q) ||
+                    (e.year !== undefined && String(e.year).includes(q))
+                );
+            })
+            .map((e) => ({
+                uri: e.uri,
+                year: e.year,
+                venueName: e.venueName,
+                description: e.description,
+                state: e.state,
+            }));
     } catch (e) {
         console.error("Failed to fetch editions:", e);
         error = parseErrorMessage(e);
@@ -75,23 +86,14 @@ export default async function EditionsPage({
             ) : undefined}
         >
             <div className="editions-page-content">
-
                 {error && <ErrorAlert message={error} />}
-
                 {!error && (
-                    <>
-                        <EditionsClient editions={editions} />
-                        <div className="editions-page-pagination">
-                            <PaginationControls
-                                currentPage={urlPage}
-                                hasNext={hasNext}
-                                hasPrev={hasPrev}
-                                basePath="/editions"
-                                variant="editorial"
-                                contextLabel=""
-                            />
-                        </div>
-                    </>
+                    <EditionsClient
+                        editions={editions}
+                        initialSearch={searchFilter}
+                        initialState={stateFilter}
+                        allStates={allStates}
+                    />
                 )}
             </div>
         </PageShell>
