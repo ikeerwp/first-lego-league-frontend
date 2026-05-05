@@ -1,10 +1,10 @@
 import type { Match } from "@/types/match";
 
 export function normalizeTeamSearch(value: string | null | undefined) {
-    return value?.trim().toLocaleLowerCase() ?? "";
+    return value?.trim().toLowerCase() ?? "";
 }
 
-export function matchParticipatesTeam(
+export function matchIncludesTeamQuery(
     match: Match,
     labels: Record<string, string>,
     query: string
@@ -26,5 +26,5 @@ export function filterMatchesByTeam(
     const normalizedQuery = normalizeTeamSearch(query);
     if (!normalizedQuery) return matches;
 
-    return matches.filter((match) => matchParticipatesTeam(match, labels, normalizedQuery));
+    return matches.filter((match) => matchIncludesTeamQuery(match, labels, normalizedQuery));
 }
