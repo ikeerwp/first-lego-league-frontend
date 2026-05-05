@@ -1,24 +1,28 @@
 "use server";
 
 import { CreateMatchPayload, MatchesService } from "@/api/matchesApi";
+import { UsersService } from "@/api/userApi";
 import { serverAuthProvider } from "@/lib/authProvider";
 import { isAdmin } from "@/lib/authz";
 import { AuthenticationError, ValidationError } from "@/types/errors";
-import { UsersService } from "@/api/userApi";
 
 function normalizeTime(value: string) {
-    return value.length === 5 ? `${value}:00` : value;
+    // If value is a local datetime without seconds (e.g. 2026-05-05T14:30), add seconds
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) {
+        return `${value}:00`;
+    }
+    return value;
 }
 
 function parseTimeToSeconds(value: string) {
-    const match = /^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/.exec(value);
+    // Expect an ISO local datetime (e.g. 2026-05-05T14:30:00 or 2026-05-05T14:30)
+    const timestamp = Date.parse(value);
 
-    if (!match) {
-        throw new ValidationError("Please provide valid match times.");
+    if (Number.isNaN(timestamp)) {
+        throw new ValidationError("Please provide valid match datetimes.");
     }
 
-    const [, hours, minutes, seconds] = match;
-    return Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds);
+    return Math.floor(timestamp / 1000);
 }
 
 function validateMatchPayload(data: CreateMatchPayload) {
