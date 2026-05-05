@@ -1,11 +1,11 @@
 import {
     ApiError,
     AuthenticationError,
+    ConflictError,
     NetworkError,
     NotFoundError,
     ServerError,
     ValidationError,
-    ConflictError,
 } from "@/types/errors";
 import type { HalPage } from "@/types/pagination";
 import halfred, { Resource } from "halfred";
@@ -176,7 +176,7 @@ async function parseResponseBody(res: Response): Promise<Resource | null> {
 /**
  * Handles fetch errors and HTTP status codes, converting them to specific error types
  */
-async function handleApiError(error: unknown, res?: Response): Promise<never> {
+async function handleApiError(config: unknown, error: unknown, res?: Response): Promise<never> {
     // Handle network errors (fetch failures - API unavailable)
     if (error instanceof TypeError) {
         throw new NetworkError(undefined, error);
@@ -192,6 +192,7 @@ async function handleApiError(error: unknown, res?: Response): Promise<never> {
             const contentType = res.headers.get("content-type");
             if (contentType?.toLowerCase().includes("json")) {
                 const errorBody = await res.json();
+                console.error("API error:", config, errorBody);
                 errorMessage = errorBody.message || errorBody.error || errorBody.detail;
             }
         } catch {
@@ -275,7 +276,7 @@ async function executeHalRequest(config: {
         });
         
         if (!res.ok) {
-            await handleApiError(new Error(`HTTP ${res.status}`), res);
+            await handleApiError(config, new Error(`HTTP ${res.status}`), res);
             throw new Error("Unreachable");
         }
         
@@ -298,7 +299,7 @@ async function executeHalRequest(config: {
         if (error instanceof ApiError) {
             throw error;
         }
-        await handleApiError(error);
+        await handleApiError(config, error);
         throw new Error("Unreachable");
     }
 }
