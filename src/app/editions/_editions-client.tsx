@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import EmptyState from '@/app/components/empty-state';
 import { Input } from '@/app/components/input';
@@ -186,6 +187,9 @@ export default function EditionsClient({
     allStates?: string[];
 }>) {
     const router = useRouter();
+    const [searchValue, setSearchValue] = useState(initialSearch);
+    const [stateValue, setStateValue] = useState(initialState);
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     function updateParams(newQuery: string, newState: string) {
         const params = new URLSearchParams();
@@ -194,35 +198,40 @@ export default function EditionsClient({
         router.push(params.toString() ? `/editions?${params}` : '/editions');
     }
 
+    function handleSearchChange(value: string) {
+        setSearchValue(value);
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+            updateParams(value, stateValue);
+        }, 300);
+    }
+
     const venueCount = getUniqueValueCount(editions.map((edition) => edition.venueName));
     const stateCount = getUniqueValueCount(editions.map((edition) => edition.state));
     const latestEditionYear = getLatestEditionYear(editions);
-
-    const availableStates = Array.from(
-        new Set(
-            editions.map((e) => e.state).filter((s): s is string => Boolean(s))
-        )
-    ).sort((a, b) => a.localeCompare(b));
 
     return (
         <div className="space-y-8">
             <div className="editions-page-search-card">
                 <div className="editions-page-search-card__field">
                     <span className="editions-page-search-card__label">
-                        Search by year or venue
+                        Search by year, venue or state
                     </span>
                     <div className="flex gap-3">
                         <Input
                             type="search"
-                            defaultValue={initialSearch}
-                            onChange={(event) => updateParams(event.target.value, initialState)}
+                            value={searchValue}
+                            onChange={(event) => handleSearchChange(event.target.value)}
                             placeholder="Search editions..."
-                            aria-label="Search editions by year or venue"
+                            aria-label="Search editions by year, venue or state"
                             className="editions-page-search-input"
                         />
                         <select
-                            defaultValue={initialState}
-                            onChange={(e) => updateParams(initialSearch, e.target.value)}
+                            value={stateValue}
+                            onChange={(e) => {
+                                setStateValue(e.target.value);
+                                updateParams(searchValue, e.target.value);
+                            }}
                             className="rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
                             aria-label="Filter by state"
                         >
