@@ -11,9 +11,14 @@ export default function CopyEmailButton({ email }: CopyEmailButtonProps) {
     const [copied, setCopied] = useState(false);
 
     async function handleCopy() {
-        await navigator.clipboard.writeText(email);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        try {
+            await navigator.clipboard.writeText(email);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (e) {
+            console.error("Clipboard copy failed:", e);
+            setCopied(false);
+        }
     }
 
     return (
