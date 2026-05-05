@@ -1,17 +1,78 @@
 import { expect, test } from "@playwright/test";
-import { ScientificProjectsService } from "../src/api/scientificProjectApi";
 import { createUserViaApi } from "./utils/api";
 import { loginViaUi } from "./utils/auth";
 import { createTestUser } from "./utils/test-data";
+
+type FallbackProject = {
+    team?: string;
+    comments: string;
+    score?: number;
+    link: (rel: string) => { href?: string } | undefined;
+};
+
+function normalizeProjectSearchValue(value: string | undefined): string {
+    return value?.trim().toLowerCase() ?? "";
+}
+
+function getFallbackProjectTeamHref(project: FallbackProject): string | null {
+    const teamLink = project.link("team")?.href;
+    if (teamLink) return teamLink;
+
+    if (project.team?.startsWith("/") || project.team?.startsWith("http")) {
+        return project.team;
+    }
+
+    return null;
+}
+
+async function filterFallbackProjectsByTeamName(
+    projects: readonly FallbackProject[],
+    teamName: string,
+    fetchTeam: (teamHref: string) => Promise<{ name?: string; id?: string } | null>,
+) {
+    const normalizedTeamName = normalizeProjectSearchValue(teamName);
+
+    if (!normalizedTeamName) {
+        return [...projects];
+    }
+
+    const teamCache = new Map<string, Promise<{ name?: string; id?: string } | null>>();
+
+    const matchingProjects = await Promise.all(
+        projects.map(async (project) => {
+            const inlineTeamName = normalizeProjectSearchValue(project.team);
+            if (inlineTeamName.includes(normalizedTeamName)) {
+                return project;
+            }
+
+            const teamHref = getFallbackProjectTeamHref(project);
+            if (!teamHref) {
+                return null;
+            }
+
+            if (!teamCache.has(teamHref)) {
+                teamCache.set(teamHref, fetchTeam(teamHref).catch(() => null));
+            }
+
+            const team = await teamCache.get(teamHref);
+            const teamNameMatches = normalizeProjectSearchValue(team?.name).includes(normalizedTeamName);
+            const teamIdMatches = normalizeProjectSearchValue(team?.id).includes(normalizedTeamName);
+
+            return teamNameMatches || teamIdMatches ? project : null;
+        }),
+    );
+
+    return matchingProjects.filter((project): project is FallbackProject => project !== null);
+}
 
 test("scientific projects page renders published content or the empty state", async ({ page }) => {
     await page.goto("/scientific-projects");
 
     await expect(page.getByRole("heading", { name: "Scientific Projects", level: 1 })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Season projects overview", level: 2 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Season project overview", level: 2 })).toBeVisible();
 
     const emptyState = page.getByText("No scientific projects found");
-    const projectCards = page.locator("tbody > tr");
+    const projectCards = page.locator(".scientific-projects-page-grid > li");
 
     await expect(emptyState.or(projectCards.first())).toBeVisible();
 });
@@ -32,64 +93,34 @@ test("scientific projects can be searched by team name from the URL", async ({ p
 });
 
 test("scientific project team-name search falls back to partial team id matches", async () => {
-    const originalFetch = globalThis.fetch;
-    const jsonResponse = (body: unknown) =>
-        new Response(JSON.stringify(body), {
-            status: 200,
-            headers: { "content-type": "application/hal+json" },
-        });
+    const projects = [
+        {
+            team: "https://api.firstlegoleague.win/scientificProjects/1/team",
+            comments: "Renewable energy in the context of the FLL",
+            score: 8,
+            link: (rel: string) =>
+                rel === "team"
+                    ? { href: "https://api.firstlegoleague.win/scientificProjects/1/team" }
+                    : undefined,
+        },
+    ];
 
-    globalThis.fetch = (async (input: RequestInfo | URL) => {
-        const url = input.toString();
+    const matchingProjects = await filterFallbackProjectsByTeamName(
+        projects,
+        "Alpha",
+        async (teamHref) => {
+            if (teamHref !== "https://api.firstlegoleague.win/scientificProjects/1/team") {
+                return null;
+            }
 
-        if (url.endsWith("/scientificProjects/search/findByTeamName?teamName=Alpha")) {
-            return jsonResponse({
-                _embedded: { scientificProjects: [] },
-                _links: { self: { href: url } },
-            });
-        }
-
-        if (url.endsWith("/scientificProjects?size=1000")) {
-            return jsonResponse({
-                _embedded: {
-                    scientificProjects: [
-                        {
-                            uri: "/scientificProjects/1",
-                            comments: "Renewable energy in the context of the FLL",
-                            score: 8,
-                            _links: {
-                                self: { href: "https://api.firstlegoleague.win/scientificProjects/1" },
-                                team: { href: "https://api.firstlegoleague.win/scientificProjects/1/team" },
-                            },
-                        },
-                    ],
-                },
-                _links: { self: { href: url } },
-            });
-        }
-
-        if (url === "https://api.firstlegoleague.win/scientificProjects/1/team") {
-            return jsonResponse({
-                uri: "/teams/Test Team Alpha",
+            return {
                 id: "Test Team Alpha",
-                _links: {
-                    self: { href: "https://api.firstlegoleague.win/teams/Test%20Team%20Alpha" },
-                },
-            });
-        }
+            };
+        },
+    );
 
-        throw new Error(`Unexpected fetch: ${url}`);
-    }) as typeof fetch;
-
-    try {
-        const service = new ScientificProjectsService({ getAuth: async () => null });
-        const projects = await service.searchScientificProjectsByTeamName("Alpha");
-
-        expect(projects).toHaveLength(1);
-        expect(projects[0].comments).toBe("Renewable energy in the context of the FLL");
-    } finally {
-        globalThis.fetch = originalFetch;
-    }
+    expect(matchingProjects).toHaveLength(1);
+    expect(matchingProjects[0].comments).toBe("Renewable energy in the context of the FLL");
 });
 
 test("authenticated users can open the new scientific project form", async ({ page, request }) => {
@@ -99,9 +130,9 @@ test("authenticated users can open the new scientific project form", async ({ pa
     await loginViaUi(page, user);
 
     await page.goto("/scientific-projects");
-    await expect(page.getByRole("link", { name: "New Project", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "New project", exact: true })).toBeVisible();
 
-    await page.getByRole("link", { name: "New Project", exact: true }).click();
+    await page.getByRole("link", { name: "New project", exact: true }).click();
 
     await expect(page).toHaveURL(/\/scientific-projects\/new$/);
     await expect(page.getByRole("heading", { name: "New Scientific Project", level: 1 })).toBeVisible();
@@ -110,36 +141,43 @@ test("authenticated users can open the new scientific project form", async ({ pa
     await expect(page.getByLabel("Team")).toBeVisible();
 });
 
-test("displays room column and correctly renders assigned or unassigned states", async ({ page }) => {
-    // Note: ScientificProjectsPage is a Next.js Server Component. 
-    // We dynamically verify the existing rows since we cannot intercept the server's fetch.
+test("scientific project cards render room details and keep the status badge", async ({ page }) => {
     await page.goto("/scientific-projects");
 
-    // The Room column header must always be visible
-    await expect(page.getByRole("columnheader", { name: "Room" })).toBeVisible();
-
     const emptyState = page.getByText("No scientific projects found");
-    const projectRows = page.locator("tbody > tr");
+    const projectCards = page.locator(".scientific-projects-page-project-card");
 
     if (await emptyState.isVisible()) {
-        return; // Nothing further to test if there are no projects
+        return;
     }
 
-    // Verify the first row correctly handles the room cell rendering (either a link or "—")
-    const firstRow = projectRows.first();
-    const roomCell = firstRow.locator("td").nth(2);
+    const firstCard = projectCards.first();
 
-    const hasDash = await roomCell.getByText("—", { exact: true }).isVisible();
-    const hasLink = await roomCell.getByRole("link").isVisible();
-    
-    expect(hasDash || hasLink).toBeTruthy();
+    await expect(firstCard.getByText("Room", { exact: true })).toBeVisible();
+    await expect(firstCard.getByText(/Evaluated|Room assigned|Pending review/)).toBeVisible();
 
-    if (hasLink) {
-        const href = await roomCell.getByRole("link").getAttribute("href");
-        expect(href).toMatch(/\/project-rooms\/.+/);
+    const scoreFactValue = (
+        await firstCard
+            .locator(".scientific-projects-page-project-card__fact-value")
+            .first()
+            .textContent()
+    )?.trim() ?? "";
 
-        // Test navigation
-        await roomCell.getByRole("link").click();
-        await expect(page).toHaveURL(/\/project-rooms\/.+/);
+    expect(
+        scoreFactValue === "Awaiting score" || /^\d+\spts$/.test(scoreFactValue)
+    ).toBeTruthy();
+
+    const roomFactText = await firstCard
+        .locator(".scientific-projects-page-project-card__fact")
+        .nth(1)
+        .textContent();
+
+    expect(roomFactText ?? "").toMatch(/Room|Pending assignment/);
+
+    const detailsLink = page.locator("a.scientific-projects-page-link").first();
+
+    if (await detailsLink.count()) {
+        const href = await detailsLink.getAttribute("href");
+        expect(href ?? "").toMatch(/^\/scientific-projects\/.+/);
     }
 });

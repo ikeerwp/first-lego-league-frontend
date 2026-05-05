@@ -5,19 +5,19 @@ import { ScientificProjectsService } from "@/api/scientificProjectApi";
 import { TeamsService } from "@/api/teamApi";
 import { UsersService } from "@/api/userApi";
 import EmptyState from "@/app/components/empty-state";
-import ErrorAlert from "@/app/components/error-alert";  
-import TeamFloatersSection from "./team-floaters-section";
-import { ScientificProjectCardLink } from "@/app/components/scientific-project-card";
-import { TeamMembersManager } from "@/app/components/team-member-manager";
+import ErrorAlert from "@/app/components/error-alert";
 import TeamEditSection from "@/app/components/team-edit-section";
+import { TeamMembersManager } from "@/app/components/team-member-manager";
 import { serverAuthProvider } from "@/lib/authProvider";
-import { NotFoundError, parseErrorMessage } from "@/types/errors";
 import { Award } from "@/types/award";
+import { NotFoundError, parseErrorMessage } from "@/types/errors";
 import { Match } from "@/types/match";
 import { ScientificProject } from "@/types/scientificProject";
 import { Team, TeamCoach, TeamMember, TeamMemberSnapshot } from "@/types/team";
 import { User } from "@/types/user";
 import TeamAwardsSection from "./_team-awards-section";
+import CoachesDisplay from "./coaches-display";
+import TeamFloatersSection from "./team-floaters-section";
 import TeamShareButton from "./team-share-button";
 import TournamentItinerary, { ScheduleItem } from "./tournament-itinerary";
 
@@ -283,9 +283,22 @@ export default async function TeamDetailPage(props: Readonly<TeamDetailPageProps
                     </div>
 
                     <div className="mb-6 space-y-1 text-sm text-muted-foreground">
-                        {team.city && <p><strong>City:</strong> {team.city}</p>}
-                        {editionYearStr && <p><strong>Edition:</strong> {editionYearStr}</p>}
-                        <p><strong>Coach:</strong> {coachName}</p>
+                        {team.city && (
+                            <p>
+                                <strong>City:</strong> {team.city}
+                            </p>
+                        )}
+                        {editionYearStr && (
+                            <p>
+                                <strong>Edition:</strong> {editionYearStr}
+                            </p>
+                        )}
+                        <CoachesDisplay
+                            coaches={coaches.map((c) => ({
+                                name: c.name,
+                                emailAddress: c.emailAddress,
+                            }))}
+                        />
                     </div>
 
                     {isAdminUser && (

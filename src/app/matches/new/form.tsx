@@ -134,7 +134,7 @@ export default function NewMatchForm({
                     <Label htmlFor="startTime">Start time</Label>
                     <Input
                         id="startTime"
-                        type="time"
+                        type="datetime-local"
                         step={60}
                         {...register("startTime", {
                             required: "Start time is required",
@@ -147,7 +147,7 @@ export default function NewMatchForm({
                     <Label htmlFor="endTime">End time</Label>
                     <Input
                         id="endTime"
-                        type="time"
+                        type="datetime-local"
                         step={60}
                         {...register("endTime", {
                             required: "End time is required",
